@@ -7,8 +7,8 @@ class MM_SRLG:
 
 
 
-    def alg(self):
-
+    def alg(self, opt_network):
+        
 
     def mm_srlg_arb(self, opt_network):
         half_b = math.ceil()
@@ -29,9 +29,9 @@ class MM_SRLG:
 
     def mm_srlg(self, opt_network):
         cycle_net = copy.deecopy(opt_network)
-        EL_cycle = self.mm_srlg_cycle(cycle_net)
-        for e in cycle_net.physical_links():
-            num_lightpaths = cycle_net.num_lightpahts_via_e(e)
+        EL_cycle  = self.mm_srlg_cycle(cycle_net)
+        for e in opt_network.physical_links():
+            num_lightpaths = EL_cycle.num_lightpahts_via_e(e)
             new_capacity   = cycle_net.get_plink_capacity(e) - num_lightpaths
             cycle_net.set_plink_capacity(e, new_capacity)
         opt_network.B = opt_network.B - opt_network.num_logical_nodes()
