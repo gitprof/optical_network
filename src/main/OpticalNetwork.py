@@ -97,18 +97,15 @@ class OpticalNetwork:
         cycle_list.append(start_node)
         return cycle_list
 
-    def num_lightpaths_via_e(self, edge):
-        return self.l_net.num_lightpaths_via_e(edge)
-
 class LogicalNetwork:
     def __init__(self):
         ''' 
             links: this is a dict: 
-             - edge: num_logical_links.
-             - while the end point of edge can be any 2 nodes
+                edge: num_logical_links.
+                while the end point of edge can be any 2 nodes
             paths: list of paths.
-             - path: list of nodes, s.t. that start node and the end node are logical nodes, 
-                                           and all the rest are non-logical nodes and unique.
+                path: list of nodes, s.t. that start node and the end node are logical nodes, 
+                    and all the rest are non-logical nodes and unique.
         '''
         links = {}
         paths = []
@@ -122,14 +119,3 @@ class LogicalNetwork:
 
     def init_from_cycle(self, cycle):
         #TODO
-
-    '''
-        we assume here that num_lightpaths_via_e = num_logicallinks_over_e
-    '''
-    def num_lightpaths_via_e(self, edge):
-        try:
-            res = self.links[edge]
-        except KeyError:
-            res = 0
-        return res
-
