@@ -2,7 +2,7 @@
 
 ''' --- Testings for MM_SRLF algorithms ---
  * some of the graphs have capacities lower than 2, in contradict to the assumption. but this shouldnt harm functionality of the algorithms.
- * 
+ *
 '''
 
 import imp
@@ -47,10 +47,10 @@ def sort_paths(paths):
             if compare_paths(paths[j], paths[j+1]):
                 tmp_path = paths[j]
                 paths[j] = paths[j+1]
-                paths[j] = tmp_path 
+                paths[j] = tmp_path
 
 def generic_alg_tester(test_name, algorithm, graph_file, expected_paths):
-    Hprint('\n'+test_name)  
+    Hprint('\n'+test_name)
     optNet = OptNet.OpticalNetwork()
     optNet.init_graph_from_file(graph_file)
     debug.assrt(None != optNet, 'generic_alg_tester - '+test_name+': optNet is None!\n')
@@ -74,26 +74,26 @@ def generic_alg_tester(test_name, algorithm, graph_file, expected_paths):
         Xprint(logical_network.paths)
         Xprint('Max SRLG:')
         Xprint(logical_network.get_max_SRLG())
-        
-        
-test_num = 0        
+
+
+test_num = 0
 def gen_test_num():
     test_num += 1
     return 'Test {}:'.format(test_num)
 
 def test_mm_srlg():
     expected_paths = []
-    generic_alg_tester( 'Test1 - ALG simple: ',     'ALG',     GRAPH_SIMPLE,   expected_paths) 
+    generic_alg_tester( 'Test1 - ALG simple: ',     'ALG',     GRAPH_SIMPLE,   expected_paths)
     #generic_alg_tester( 'Test4 - arb simple: ',     'arb',     GRAPH_SIMPLE,    expected_paths)  #TODO: this test raises assert, need to check
     generic_alg_tester( 'Test4 - MM_SRLG simple: ',     'MM_SRLG',     GRAPH_SIMPLE,    expected_paths)
-    generic_alg_tester( 'Test1 - ALG special: ',     'ALG',     GRAPH_SPECIAL,   expected_paths) 
+    generic_alg_tester( 'Test1 - ALG special: ',     'ALG',     GRAPH_SPECIAL,   expected_paths)
     generic_alg_tester( 'Test4 - arb special: ',     'arb',     GRAPH_SPECIAL,    expected_paths)
     generic_alg_tester( 'Test3 - cycle special: ',   'cycle',   GRAPH_SPECIAL,    expected_paths)
     generic_alg_tester( 'Test5 - MM_SRLG special: ', 'MM_SRLG', GRAPH_SPECIAL,    expected_paths)
     generic_alg_tester( 'Test2 - ALG basic: ',     'ALG',     GRAPH_BASIC,    expected_paths)
     generic_alg_tester( 'Test3 - cycle basic: ',   'cycle',   GRAPH_BASIC,    expected_paths)
     generic_alg_tester( 'Test5 - MM_SRLG basic: ', 'MM_SRLG', GRAPH_BASIC,    expected_paths)
-    generic_alg_tester( 'Test4 - arb basic: ',     'arb',     GRAPH_TMP,    expected_paths)    
+    generic_alg_tester( 'Test4 - arb basic: ',     'arb',     GRAPH_TMP,    expected_paths)
     generic_alg_tester( 'Test6 - ALG advanced: ',     'ALG',     GRAPH_ADVANCED,    expected_paths)
     generic_alg_tester( 'Test7 - cycle advanced: ','cycle',   GRAPH_ADVANCED, None)
     generic_alg_tester( 'Test8 - arb advanced: ','arb',   GRAPH_ADVANCED, None)
