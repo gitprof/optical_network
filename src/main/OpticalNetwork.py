@@ -9,7 +9,8 @@ import imp
 import os
 from collections import Counter
 
-Global  = imp.load_source('Global',         os.path.join('src', 'main', 'Global.py'))
+running_script_dir = os.path.dirname(os.path.abspath(__file__))
+Global  = imp.load_source('Global', os.path.join(running_script_dir, 'Global.py'))
 from Global import *
 
 '''
@@ -22,6 +23,7 @@ Graph attributes:
 '''
 class OpticalNetwork:
     def __init__(self):
+        print(type(Global))
         self.graph = nx.Graph()
         self.B     = 0 # default
         self.l_net = LogicalNetwork()
@@ -29,7 +31,6 @@ class OpticalNetwork:
         self.debug = register_debugger()
         self.logical_nodes = []
         self.input_graph = None
-
     '''
     Assume file of format:
     B,<B_val>
@@ -47,7 +48,15 @@ class OpticalNetwork:
             lines = [tuple(i[:-1].split(',')) for i in f]
         self.B = int(lines[0][1])
         edges_lines = lines[1:]
+        counter=0
+        for line in edges_lines:
+            if (len(line) < 3) or (line[0] == '#') :
+                break
+            counter += 1
+        self.debug.assrt(counter > 0, "bad graph file!")
+        edges_lines = edges_lines[:counter]
         input_edges = {(line[0], line[1]):int(line[2]) for line in edges_lines}
+        self.debug.logger("init_graph_from_file: input_edges=%s" % input_edges)
         #input_nodes = []
         self.logical_nodes = []
         for edge in input_edges.keys():
@@ -58,6 +67,9 @@ class OpticalNetwork:
         weighted_edges = [(int(edge[0][1:]), int(edge[1][1:]), {'capacity':input_edges[edge]}) for edge in input_edges.keys()]
         self.graph.add_edges_from(weighted_edges)
         self.input_graph = copy.deepcopy(self.graph)
+
+    def get_logical_network(self):
+        return self.l_net
 
     def clone(self):
         print('clone:')
@@ -165,6 +177,10 @@ class LogicalNetwork:
              - path: list of nodes v1, v2 ... , vk.  s.t: v1 and vk are logical nodes.
                                                    and all the rest can be logical or non-logical nodes.
                                                    all nodes unique.
+            routing_paths: the current paths that data is routed on. this can be different than paths
+                for example in case of failure: in this case the routers pairs which their path traversing
+                the failed link will need to find alternative path, BASED on the paths which produced by the
+                initial algorithm
         '''
         self.debug = register_debugger('opticalNetwork')
         self.links = {}
@@ -172,6 +188,7 @@ class LogicalNetwork:
         self.max_SRLG = None
         self.initialized = False
         self.traversing_paths = {}
+        self.routing_paths = []
 
     def choose_arbitrary_subset_of_size_b(self, B):
         self.debug.assrt(len(self.paths) >= B, "choose_an_arb_subset_of_size_B: not enough paths!")
@@ -261,4 +278,25 @@ class LogicalNetwork:
         if not (link in self.traversing_paths.keys()):
             return []
         return self.traversing_paths[link]
+
+    def get_paths(self):
+        return self.paths
+
+    def set_paths(self, paths_in):
+        self.paths = paths_in
+
+    #TODO: DO IT!
+    def get_routing_paths(self):
+        return self.routing_paths
+
+    def update():
+        self.init_from_paths()
+        self.calc_max_SRLG()
+        self.init_link_to_paths_mapping()
+        self.routing_paths = self.get_paths()
+
+
+
+
+
 

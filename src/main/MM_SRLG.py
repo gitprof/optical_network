@@ -13,7 +13,9 @@ import copy
 from OpticalNetwork import LogicalNetwork
 from OpticalNetwork import OpticalNetwork
 
-Global = imp.load_source('Global', os.path.join('src', 'main', 'Global.py'))
+
+running_script_dir = os.path.dirname(os.path.abspath(__file__))
+Global  = imp.load_source('Global', os.path.join(running_script_dir, 'Global.py'))
 from Global import *
 
 Debug = imp.load_source('Debug', os.path.join(MAIN_DIR, 'utilities', 'Debug.py'))
@@ -41,7 +43,7 @@ class MM_SRLG_solver:
         for C in range(1, half_b+1):
             print('C: '+str(C))
             opt_network.set_strict_capacity(C)
-            logical_network = self.ALG(opt_network)            
+            logical_network = self.ALG(opt_network)
             if len(logical_network.paths) >= opt_network.B:
                 break
         self.debug.assrt(logical_network != None, 'mm_slrg_arb: logical_network is None!')
@@ -74,10 +76,9 @@ class MM_SRLG_solver:
         cycle.pop()
         cycle.append((start_node, True))
         self.debug.assrt((cycle != None) and (len(cycle) > 0), 'produce_cycle_from_tree: bad cycle')
-        print("cycle")
         return cycle
 
-    ''' 
+    '''
     Params:
      cycle: list of nodes, first and last are the same logical node. all the logical nodes should be in the cycle
                 all nodes are UNIQUE, except first and last
@@ -99,32 +100,32 @@ class MM_SRLG_solver:
 
 
     def mm_srlg_cycle(self, opt_network):
+        self.debug.logger('mm_srlg_cycle: optical_network: %s' % opt_network.physical_links())
         spanning_tree = opt_network.create_spanning_tree()
+        self.debug.logger('mm_srlg_cycle: initial_tree: %s' % spanning_tree.edges())
         # print("mm_srlg_cycle:")
         # print(opt_network.get_logical_nodes())
         leaves = [node for node in spanning_tree.nodes() if ((spanning_tree.degree(node) == 1) and (not opt_network.is_logical_node(node)))]
         #self.debug.assrt((leaves != None) and (len(leaves) > 0), 'mm_srlg: no leaves!')
         while leaves != []:
             leaf = leaves.pop()
-            neighbors = spanning_tree.neighbors(leaf) 
+            neighbors = spanning_tree.neighbors(leaf)
             spanning_tree.remove_node(leaf)
             leaves = leaves + [node for node in neighbors if ((opt_network.node_degree(node) == 1) and (not opt_network.is_logical_node(node)))]
+
+        self.debug.logger('mm_srlg_cycle: prunned_tree: %s' % spanning_tree.edges())
         cycle = self.produce_cycle_from_tree(opt_network, spanning_tree)
-        self.debug.logger('mm_srlg_cycle: cycle:')
-        self.debug.logger(cycle)
+        self.debug.logger('mm_srlg_cycle: cycle: %s' % cycle)
         paths = self.produce_subpaths_from_cycle(opt_network, cycle)
         self.debug.assrt((paths != None) and (len(paths) > 0), 'mm_srlg_cycle: bad paths!')
         logical_network = LogicalNetwork().init_from_paths(paths)
-        self.debug.logger('mm_srlg_cycle: produced logical network: ')
-        self.debug.logger(logical_network.paths)
+        self.debug.logger('mm_srlg_cycle: produced logical network: %s ' % logical_network.get_paths())
         return logical_network
 
     def mm_srlg(self, opt_network):
+        self.debug.assrt(opt_network.B >= len(opt_network.get_logical_nodes()), "mm_srlg: B must be bigger than num of logical nodes!")
         cycle_net = opt_network.clone()
         self.debug.assrt((opt_network != None) and (opt_network.B == cycle_net.B), 'mm_slrg: opt_network invalid!')
-        print('mm_srlg:')
-        print(opt_network.get_logical_nodes())
-        print(cycle_net.get_logical_nodes())
         EL_cycle  = self.mm_srlg_cycle(cycle_net)
         for e in sorted(opt_network.physical_links().keys()):
             num_lightpaths = EL_cycle.num_lightpaths_via_e(e)
@@ -135,13 +136,13 @@ class MM_SRLG_solver:
         EL_arb        = self.mm_srlg_arb(opt_network) if (opt_network.B > 0) else LogicalNetwork()
         EL_arb.merge(EL_cycle)
         return EL_arb
-    
+
     ''' Here we assume only 1 logical path between 2 routers
     '''
-    def process_alg_output(self, prob, routers, nodes, edges): 
+    def process_alg_output(self, prob, routers, nodes, edges):
         # self.debug.logger('process_alg_output:')
         self.debug.assrt("Optimal" == LpStatus[prob.status], "process_alg_output: ALG failed to find optimal solution!")
-        
+
         paths_indicators = {}
         links_indicators = {}
         for v in prob.variables():
@@ -150,13 +151,13 @@ class MM_SRLG_solver:
                 links_indicators[(int(s[2]), int(s[3]), int(s[4]), int(s[5]))] = v.varValue
             if 'l' == s[0]:
                 paths_indicators[(int(s[1]), int(s[2]))]                       = v.varValue
-                    
+
         logical_paths = []
         #print(routers)
-        #print(nodes)        
-        # print('paths_indicators:')                
+        #print(nodes)
+        # print('paths_indicators:')
         # print(paths_indicators)
-        
+
         for r1 in routers:
             for r2 in routers:
                 if r1 >= r2 or paths_indicators[(r1,r2)] == 0:
@@ -176,13 +177,13 @@ class MM_SRLG_solver:
                     curr_path.append(next_node)
                     links_indicators[(r1,r2,curr_node,next_node)] = 0
                     curr_node = next_node
-                    
-                logical_paths.append(curr_path)                                                           
+
+                logical_paths.append(curr_path)
                 paths_indicators[(r1,r2)] = 0
         self.debug.assrt(value(prob.objective) == len(logical_paths), "process_alg_output: didnt find enough logical paths!")
         return logical_paths
 
-        
+
     def ALG(self, opt_network):
         self.debug.logger('ALG:')
         V_p            = opt_network.nodes()
@@ -191,15 +192,15 @@ class MM_SRLG_solver:
         V_l            = opt_network.get_logical_nodes()
         edge_to_capacity = copy.deepcopy(physical_links)
         for (i,j) in physical_links.keys():
-            edge_to_capacity[(j,i)] = physical_links[(i,j)]        
-        logical_paths = self.ALG_inner(V_p, E_p, V_l, edge_to_capacity)        
+            edge_to_capacity[(j,i)] = physical_links[(i,j)]
+        logical_paths = self.ALG_inner(V_p, E_p, V_l, edge_to_capacity)
         logical_network = LogicalNetwork()
         logical_network.init_from_paths(logical_paths)
         self.debug.logger('ALG: produced logical network: ')
         self.debug.logger(logical_network.paths)
-        return logical_network   
+        return logical_network
 
-   
+
     def ALG_inner(self, V_p, E_p, V_l, edge_to_capacity):
         # print("\nALG_inner:")
         # print(V_p)
@@ -242,7 +243,7 @@ class MM_SRLG_solver:
                 #add reference both from G and G_log
                 G[i][j]['r_vars']['%d_%d' % (u,v)]  = [var1, var2]
                 G_log[u][v]['r_vars']['%d_%d' % (i,j)] = var1
-                G_log[u][v]['r_vars']['%d_%d' % (j,i)] = var2                
+                G_log[u][v]['r_vars']['%d_%d' % (j,i)] = var2
 
         #init problem as a maximiztion problem using Pulp
         prob = LpProblem("ALG",LpMaximize)
@@ -280,14 +281,14 @@ class MM_SRLG_solver:
                     prob += sum(edges_in) - sum(edges_out) == 0 ,"path constarint (u,v,i) = (%d,%d,%d)" % (u,v,i)
 
         prob.solve()
-        
+
         #print("Status:", LpStatus[prob.status])
         # The optimised objective function value is printed to the screen
         #print("L = ", value(prob.objective))
         # Each of the variables is printed with it's resolved optimum value
         #for v in prob.variables():
         #    print(v.name, "=", v.varValue)
-            
+
         # print("ALG_inner: end")
         logical_paths = self.process_alg_output(prob, V_l, V_p, E_p)
         return logical_paths

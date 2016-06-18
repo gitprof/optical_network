@@ -6,12 +6,17 @@
 import imp
 import os
 
+running_script_dir = os.path.dirname(os.path.abspath(__file__))
+
 if 'nt' == os.name:
 	path_dirs = ['']
 else:
-    path_dirs = ['']
-    
-BASE_DIR = os.path.join(*path_dirs)
+    path_dirs = running_script_dir
+
+path1 = os.path.split(running_script_dir)[0]
+path2 = os.path.split(path1)[0]
+
+BASE_DIR = path2 # os.path.join(*(path2))
 MAIN_DIR = os.path.join(BASE_DIR, 'src', 'main')
 TEST_DIR = os.path.join(BASE_DIR, 'src', 'test')
 
@@ -21,6 +26,8 @@ GRAPH_BASIC    = os.path.join(GRAPH_DIR, 'basic.g')
 GRAPH_ADVANCED = os.path.join(GRAPH_DIR, 'advanced.g')
 GRAPH_TMP      = os.path.join(GRAPH_DIR, 'tmp.g')
 GRAPH_SPECIAL  = os.path.join(GRAPH_DIR, 'special.g')
+GRAPH_2PATHS   = os.path.join(GRAPH_DIR, '2paths.g')
+GRAPH_STAR     = os.path.join(GRAPH_DIR, 'star.g')
 
 NO_COLOR = 1
 

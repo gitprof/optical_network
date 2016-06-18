@@ -1,0 +1,88 @@
+
+
+import imp
+import os
+from mininet.topo import Topo
+
+running_script_dir = os.path.dirname(os.path.abspath(__file__))
+global_dir = os.path.join(os.path.split(running_script_dir)[0], 'main')
+Global  = imp.load_source('Global', os.path.join(global_dir, 'Global.py'))
+from Global import *
+OptNet  = imp.load_source('OpticalNetwork', os.path.join(MAIN_DIR, 'OpticalNetwork.py'))
+MmSrlg  = imp.load_source('MM_SRLG',        os.path.join(MAIN_DIR, 'MM_SRLG.py'))
+
+
+class TopoFormat(Topo):
+
+    def __init__(self):
+        Topo.__init__(self)
+
+    def set_topo(self, optNet):
+        switches = {}
+        for node in optNet.nodes():
+            switches[node] = self.addSwitch('s%d' % node)
+
+        for edge in optNet.physical_links():
+            self.addLink(switches[edge[0]], switches[edge[1]])
+
+        for node in optNet.get_logical_nodes():
+            host = self.addHost('h%d'% node, ip='0.0.0.0')
+            self.addLink(switches[node], host)
+
+running_opt_net = None
+#RUNNING_OPT_NET_FILE = GRAPH_2PATHS
+RUNNING_OPT_NET_FILE = 'optical_network/graphs/2paths.g'
+
+
+class MininetInterface(object):
+    def __init__(self):
+        demo = 0
+        self.debug = register_debug()
+
+    def optical_network_to_mn_topo(self, optNet):
+        topoFormat = TopoFormat()
+        topoFormat.set_topo(optNet)
+        return topoFormat
+
+    def get_running_opt_net():
+        global running_opt_net
+
+        if None == running_opt_net:
+            set_running_opt_net()
+        return running_opt_net
+
+
+    def set_runnning_opt_net(graph_file = RUNNING_OPT_NET_FILE, pathing_algo = MM_SRLG):
+        running_opt_net = OpticalNetwork()
+        running_opt_net.init_graph_from_file(graph_file)
+        if MM_DRLG == pathing_algo:
+            mmSrlg = MmSrlg.MM_SRLG_solver()
+            runnin_opt_net.l_net = mmSrlg.mm_srlg(optNet)
+        else
+            self.debug.assrt(False, "set_running_opt_net: Unkown pathing algorithm!")
+
+
+
+
+
+
+
+def sanity_test():
+    optNet = OptNet.get_running_()
+    print(optNet.nodes())
+    print(optNet.get_logical_nodes())
+    print(optNet.physical_links())
+    mmSrlg = MmSrlg.MM_SRLG_solver()
+    optNet.l_net = mmSrlg.mm_srlg(optNet)
+    mn_intf = MininetInterface()
+    topo = mn_intf.optical_network_to_mn_topo(optNet)
+    print(optNet.l_net.get_paths())
+
+
+
+
+
+if "__main__" == __name__:
+    sanity_test()
+
+

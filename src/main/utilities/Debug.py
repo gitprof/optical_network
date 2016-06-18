@@ -21,8 +21,8 @@ NO_COLOR = True
 class Debug:
     def __init__(self, log_filename = LOG_FILENAME):
         self.kill_on_assrt = True
-        self.curr_log_level = 0 # 0 - tmp prints. 
-                                # 1 - logs. 
+        self.curr_log_level = 0 # 0 - tmp prints.
+                                # 1 - logs.
                                 # 2 - errors
         if not os.path.isdir(LOGS_DIR):
             os.makedirs(LOGS_DIR)
@@ -60,10 +60,12 @@ class Debug:
         self.flog.close()
         self.ferr.close()
 
-    def assrt(self, cond, msg, error = True):
+    def assrt(self, cond, msg, error = True, _raise = True):
         if not cond:
             log_level = 3 if error else 2
             self.logger (msg, log_level)
+            if _raise:
+                raise Exception
             if error and self.kill_on_assrt:
                exit(1)
 
