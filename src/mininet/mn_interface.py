@@ -1,5 +1,5 @@
 
-
+import subprocess
 import imp
 import os
 import time
@@ -75,11 +75,15 @@ class TopoFormat(Topo):
             host = self.addHost('h%d'% node)
             self.addLink(switches[node], host)
 
-HOST_CMD="~/mininet/util/m"
+SSH_HOST="~/mininet/util/m"
 RUNNING_OPT_NET = None
 #RUNNING_OPT_NET_FILE = GRAPH_2PATHS
 RUNNING_OPT_NET_FILE = GRAPH_STAR
 CONTROLLER_IP='127.0.0.1'
+DUMP_NET_DATA_SCRIPT=os.path.join(BASE_DIR, 'src', 'mininet', 'dump_net_data.sh')
+DUMP_NET_OUTPUT_FILE=os.path.join(BASE_DIR, 'logs', 'dump_net.log')
+
+RESTIME = 6
 
 class MNInterface(object):
     def __init__(self):
@@ -149,40 +153,96 @@ class MNInterface(object):
                 self.debug.logger("set_arp_tables: node=%s. ip=%s. mac=%s" % (node.name, ip, mac) )
                 node.setARP(ip, mac)
 
+
     def start_controller(self):	
         POX_DIR="~/pox"
-	POX_PARAMS="forwarding.l3_learning  openflow.spanning_tree --no-flood --hold-down info.packet_dump log.level --DEBUG samples.pretty_log openflow.discovery"
+	#POX_PARAMS="forwarding.l3_learning  openflow.discovery openflow.spanning_tree --no-flood --hold-down info.packet_dump log.level --DEBUG samples.pretty_log "
+	POX_PARAMS="forwarding.l3_learning  openflow.discovery  info.packet_dump log.level --DEBUG samples.pretty_log "
 	start_controller_cmd="%s/pox.py %s" %  (POX_DIR, POX_PARAMS)
 	cmd="sudo xterm -e \"%s\" &" % (start_controller_cmd)
 	self.debug.logger(cmd)
 	os.popen(cmd)
-	time.sleep(2)
 	self.controller_ip = CONTROLLER_IP
+	time.sleep(RESTIME)
 	self.net.addController( 'c0',
 			    controller=RemoteController,
 			    ip=self.controller_ip,
 			    port=6633)
 
+    def _dump_net_data(self):
+         todo = 0
+
     def dump_net_data(self):
-        
+	self.debug.logger('dumping data...')
+        params=""
+	os.system('echo \"-----\" > %s' % (DUMP_NET_OUTPUT_FILE))
+	for sw in self._topo.switches():
+	    os.system('echo \"%s flow-table:\" >> %s ' % (sw, DUMP_NET_OUTPUT_FILE))
+            cmd="sudo ovs-ofctl dump-flows %s | cut -d\",\" -f 7- >> %s" % (sw, DUMP_NET_OUTPUT_FILE)
+	    #os.popen(cmd)
+	    os.system(cmd)
+	
+	for host in self._topo.hosts():
+	    os.system('echo \"%s IP:\"  >> %s' % (host, DUMP_NET_OUTPUT_FILE  ))
+            cmd="sudo %s %s ifconfig %s-eth0 | egrep \"inet|HWaddr\" | grep -v inet6 >> %s" % (SSH_HOST, host, host, DUMP_NET_OUTPUT_FILE)  #  | cut -d: -f2 | awk '{print $1}'
+	    #os.popen(cmd)
+	    os.system(cmd)
+
+
+	for host in self._topo.hosts():
+	    os.system('echo \"%s ARP:\" >> %s' % (host, DUMP_NET_OUTPUT_FILE  ))
+            cmd="sudo %s %s arp >> %s" % (SSH_HOST, host, DUMP_NET_OUTPUT_FILE)  #  | cut -d: -f2 | awk '{print $1}'
+	    #os.popen(cmd)
+	    os.system(cmd)
+
+        with file(DUMP_NET_OUTPUT_FILE) as f:
+		self.debug.logger(f.read())
+   
+    def test_ping(self, hosts = None):
+	self.debug.logger("test_ping: hosts=%s" % (hosts))
+        #if None == hosts:
+        #    hosts = self._topo.hosts()
+        self.net.pingAll(timeout = RESTIME) # TODO: get host, not names.
+
+    def test_iperf(self, hosts = None):
+	self.debug.logger("test_iperf: hosts=%s" % (hosts))
+        #if None == hosts:
+        #    hosts = self._topo.hosts()
+
+        self.net.iperf(hosts = hosts)
+
+    def clean_up(self):
+        os.popen("sudo killall -9 xterm > /dev/null") # TODO: kill by PID
+        os.popen("sudo mn -c > /dev/null") 
+	
 
     def start_mn_session(self, opt_net_file = RUNNING_OPT_NET_FILE, controller = None, pathing_algo = 'MANUAL', paths = None):
+	self.clean_up()
 	self.debug.assrt((pathing_algo == 'MANUAL') != (paths == None), "start_mn_session: conflicts pathing_algo and paths!" )
         self.set_running_opt_net(opt_net_file, pathing_algo, paths)
 
-        _topo = self.optical_network_to_mn_topo()
-        self.net = Mininet( topo=_topo,
+        self._topo = self.optical_network_to_mn_topo()
+        self.net = Mininet( topo=self._topo,
                     build=False)
 
         if controller != None:
 	    self.start_controller()
 
         #create_topo2(net)
+	RUNNING_OPT_NET.draw()
         self.net.start()
+	time.sleep(RESTIME)
+        self.test_ping()
+        #self.test_iperf()
+
         # self.set_dhclients()
-        CLI( self.net )
+        _CLI = False
+        if _CLI:
+	    CLI( self.net )
+        #self.dump_net_data()
         self.net.stop()
-        os.popen("killal -9 xterm") # TODO: kill by PID
+        if controller != None:
+ 	    os.popen("sudo killall -9 xterm") # TODO: kill by PID
 
 
     def dpid_to_optnetid(self, dpid):

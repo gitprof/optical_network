@@ -35,18 +35,19 @@ def mn_test(graph_file, controller, pathing_algo, paths):
 def mn_generic_tests():
     graphs_and_paths = [
                        # (GRAPH_2PATHS, [[1,3,2]]), 
-                        (GRAPH_STAR, [[1,5,6,3]])
+                        (GRAPH_STAR, [[1,5,6,3]]),
+                        (GRAPH_TREE, [[5,1,4,2]]),
                        ]
     for g_p in graphs_and_paths:
-	mn_test(graph_file = g_p[0], controller = None, pathing_algo = 'MANUAL', paths = g_p[1] )
+	mn_test(graph_file = g_p[0], controller = 'MANUAL', pathing_algo = 'MANUAL', paths = g_p[1] )
 
 def run_tests():
-    #run_mn_examples()
+    run_mn_examples()
     mn_generic_tests()
 
 
 if "__main__" == __name__:
-    setLogLevel( 'info' )
+    #setLogLevel( 'info' )
     debug = register_debugger()
     run_tests()
     close_debugger()

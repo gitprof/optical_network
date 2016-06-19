@@ -1,13 +1,23 @@
 #!/bin/bash
 
+
 function Use {
     echo "Usage: %0 <>"
 }
 
+HOST_CMD="~/mininet/util/m"
+SWITCHES=( )
+HOSTS=( )
 
-HOST_CMD="./mininet/util/m"
-SWITCHES=( s1 s2 s3 )
-HOSTS=( h1 h2 )
+# processing params:
+for node in $@; do
+    node_type='expr substr $node 1 1'
+    if [[ "s" = node_type ]]; then
+        SWITCHES=( ${SWITCHES[@]} $node )
+    else # h
+        HOSTS=( ${HOSTS[@]} $node )
+    fi
+done
 
 function PrintTable {
     sw=$1

@@ -43,7 +43,6 @@ class OpticalNetwork:
         (x is number)
     '''
     def init_graph_from_file(self, graph_file):
-        print('init_graph_from_file')
         with open(graph_file, 'r') as f:
             lines = [tuple(i[:-1].split(',')) for i in f]
         self.B = int(lines[0][1])
@@ -56,7 +55,7 @@ class OpticalNetwork:
         self.debug.assrt(counter > 0, "bad graph file!")
         edges_lines = edges_lines[:counter]
         input_edges = {(line[0], line[1]):int(line[2]) for line in edges_lines}
-        self.debug.logger("init_graph_from_file: input_edges=%s" % input_edges)
+        #self.debug.logger("init_graph_from_file: input_edges=%s" % input_edges)
         #input_nodes = []
         self.logical_nodes = []
         for edge in input_edges.keys():
@@ -148,7 +147,14 @@ class OpticalNetwork:
     def draw(self):
         g = self.graph
         pos = nx.spring_layout(self.graph,scale=2)
-        nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color='r', node_size=500, alpha=0.8)
+	node_colors = []
+	for node in g.nodes():
+	    if self.is_logical_node(node):
+	        node_colors.append('g')
+	    else:
+	        node_colors.append('r')
+
+        nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, node_size=500, alpha=0.8)
         nx.draw_networkx_edges(g, pos, edgelist=g.edges(), edge_color=[( (float(g[u][v]['capacity'])*0.01)+10000 ) for (u,v) in g.edges()], edge_vmin=100, edge_vmax=1000, width=5, alpha=0.8)
         #nx.draw(self.graph,pos,font_size=8)
         #nxd.draw(self.graph)

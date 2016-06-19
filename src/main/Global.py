@@ -29,6 +29,7 @@ GRAPH_SPECIAL  = os.path.join(GRAPH_DIR, 'special.g')
 GRAPH_2PATHS   = os.path.join(GRAPH_DIR, '2paths.g')
 GRAPH_STAR     = os.path.join(GRAPH_DIR, 'star.g')
 GRAPH_2PATHS     = os.path.join(GRAPH_DIR, '2paths.g')
+GRAPH_TREE     = os.path.join(GRAPH_DIR, 'tree.g')
 
 NO_COLOR = 1
 

@@ -21,7 +21,7 @@ NO_COLOR = True
 class Debug:
     def __init__(self, log_filename = LOG_FILENAME):
         self.kill_on_assrt = True
-        self.curr_log_level = 0 # 0 - tmp prints.
+        self.curr_log_level = 2 # 0 - tmp prints.
                                 # 1 - logs.
                                 # 2 - errors
         if not os.path.isdir(LOGS_DIR):
