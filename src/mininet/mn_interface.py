@@ -3,6 +3,7 @@
 import imp
 import os
 import time
+import sys
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import Controller, RemoteController, Node, Host
@@ -70,7 +71,8 @@ class TopoFormat(Topo):
             self.addLink(switches[edge[0]], switches[edge[1]])
 
         for node in optNet.get_logical_nodes():
-            host = self.addHost('h%d'% node, ip='0.0.0.0')
+            #host = self.addHost('h%d'% node, ip='0.0.0.0') #DONT DO IT UNLESS U SET DHCLIENTS
+            host = self.addHost('h%d'% node)
             self.addLink(switches[node], host)
 
 HOST_CMD="~/mininet/util/m"
@@ -81,7 +83,6 @@ CONTROLLER_IP='127.0.0.1'
 
 class MNInterface(object):
     def __init__(self):
-        demo = 0
         self.debug = register_debugger()
         self.net = None
         self.host_to_ip = {}
@@ -101,13 +102,15 @@ class MNInterface(object):
         return RUNNING_OPT_NET
 
 
-    def set_running_opt_net(self, graph_file, pathing_algo):
+    def set_running_opt_net(self, graph_file, pathing_algo, paths = None):
         global RUNNING_OPT_NET
         RUNNING_OPT_NET = OptNet.OpticalNetwork()
         RUNNING_OPT_NET.init_graph_from_file(graph_file)
         logical_paths = []
         if   'MANUAL'  == pathing_algo:   # this is for testing purposes
-            logical_paths = [[1,5,6,3], [2,5,6,4]]
+            #mmSrlg = MmSrlg.MM_SRLG_solver()                 # TODO: this is debug
+            #logical_paths = mmSrlg.mm_srlg(RUNNING_OPT_NET)  # this is just for debugging, need to remove
+            logical_paths = paths
         elif 'MM_SRLG' == pathing_algo:
             mmSrlg = MmSrlg.MM_SRLG_solver()
             logical_paths = mmSrlg.mm_srlg(RUNNING_OPT_NET)
@@ -146,30 +149,40 @@ class MNInterface(object):
                 self.debug.logger("set_arp_tables: node=%s. ip=%s. mac=%s" % (node.name, ip, mac) )
                 node.setARP(ip, mac)
 
+    def start_controller(self):	
+        POX_DIR="~/pox"
+	POX_PARAMS="forwarding.l3_learning  openflow.spanning_tree --no-flood --hold-down info.packet_dump log.level --DEBUG samples.pretty_log openflow.discovery"
+	start_controller_cmd="%s/pox.py %s" %  (POX_DIR, POX_PARAMS)
+	cmd="sudo xterm -e \"%s\" &" % (start_controller_cmd)
+	self.debug.logger(cmd)
+	os.popen(cmd)
+	time.sleep(2)
+	self.controller_ip = CONTROLLER_IP
+	self.net.addController( 'c0',
+			    controller=RemoteController,
+			    ip=self.controller_ip,
+			    port=6633)
 
-    def start_mn_session(self, opt_net_file = RUNNING_OPT_NET_FILE, controller = None):
-        self.set_running_opt_net(opt_net_file, 'MANUAL')
+    def dump_net_data(self):
+        
+
+    def start_mn_session(self, opt_net_file = RUNNING_OPT_NET_FILE, controller = None, pathing_algo = 'MANUAL', paths = None):
+	self.debug.assrt((pathing_algo == 'MANUAL') != (paths == None), "start_mn_session: conflicts pathing_algo and paths!" )
+        self.set_running_opt_net(opt_net_file, pathing_algo, paths)
 
         _topo = self.optical_network_to_mn_topo()
         self.net = Mininet( topo=_topo,
                     build=False)
 
         if controller != None:
-            POX_DIR="~/pox"
-            start_controller_cmd="%s %s/pox.py" % (POX_DIR)
-            cmd="sudo xterm %s" % (start_controller_cmd)
-            os.popen(cmd)
-            self.controller_ip = CONTROLLER_IP
-            self.net.addController( 'c0',
-                            controller=RemoteController,
-                            ip=self.controller_ip,
-                            port=6633)
+	    self.start_controller()
 
         #create_topo2(net)
         self.net.start()
         # self.set_dhclients()
         CLI( self.net )
         self.net.stop()
+        os.popen("killal -9 xterm") # TODO: kill by PID
 
 
     def dpid_to_optnetid(self, dpid):
@@ -177,6 +190,7 @@ class MNInterface(object):
 
     def optnetid_to_dpid(self, optnetid):
         return optnetid
+
 
 if "__main__" == __name__:
     setLogLevel( 'info' )
