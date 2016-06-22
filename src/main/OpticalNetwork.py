@@ -21,6 +21,10 @@ Graph attributes:
  logical nodes: vertex marked with attr type = logical
  logical links: edges  marked with attr logical = <num_of_logical_links_on_the_physical>
 '''
+GEN = 100
+DEF_INC_FACTOR = 20
+MAX_CAP = 40
+
 class OpticalNetwork:
     def __init__(self):
         print(type(Global))
@@ -63,10 +67,111 @@ class OpticalNetwork:
                 if not (int(edge[i][1:]) in self.logical_nodes):
                     if 'r' == edge[i][0]:
                         self.logical_nodes.append(int(edge[i][1:]))
-        self.debug.logger("init_graph_from_file: logical_nodes=%s", self.logical_nodes)
+        self.debug.logger("init_graph_from_file: logical_nodes=%s" % self.logical_nodes)
         weighted_edges = [(int(edge[0][1:]), int(edge[1][1:]), {'capacity':input_edges[edge]}) for edge in input_edges.keys()]
         self.graph.add_edges_from(weighted_edges)
         self.input_graph = copy.deepcopy(self.graph)
+
+    def get_logical_pairs(self):
+        pairs = []
+        for r1 in sorted(self.get_logical_nodes()):
+            for r2 in sorted(self.get_logical_nodes()):
+                if r1 >= r2:
+                    continue
+                pairs.append((r1,r2))
+        self.debug.logger("get_logical_pairs: %s" % (pairs))
+        return pairs
+
+    def get_links_from_path(self, path):
+        links = []
+        for ix in range(len(path)-1):
+            n1 = min(path[ix], path[ix+1])
+            n2 = max(path[ix], path[ix+1])
+            links.append((n1, n2))
+        return links
+
+
+    def create_logical_graph(self, inc_factor = DEF_INC_FACTOR):
+        self.debug.logger("create_logical_graph:")
+        self.logical_graph = nx.Graph()
+        gen = GEN
+
+        for path in self.l_net.get_paths():
+            self.debug.logger("create_logical_graph: process path = %s" % (path))
+            self.debug.assrt(path >= 2, "create_logical_graph: bad logical path!")
+            r1, r2 = path[0], path[-1]
+            self.logical_graph.add_node(r1)
+            self.logical_graph.add_node(r2)
+            links = self.get_links_from_path(path)
+            #formatted_nodes = [node+gen for node in path if ((node != r1) and (node != r2))]
+            for link in links:
+                weight = int(DEF_INC_FACTOR / float(self.get_plink_capacity((link[0], link[1]))))
+                a = link[0] if ((link[0] == r1) or (link[0] == r2)) else link[0]+gen
+                b = link[1] if ((link[1] == r1) or (link[1] == r2)) else link[1]+gen
+                self.debug.logger(link)
+                self.logical_graph.add_edge(a, b, weight = weight)
+            gen += GEN
+        self.debug.logger("create_logical_graph: logical_graph = %s" % (self.logical_graph.edges()))
+
+        return self.logical_graph
+
+    def set_routing_paths(self):
+        logical_graph = self.create_logical_graph()
+        self.debug.logger("set_routing_paths: logical_graph=%s" % (logical_graph.edges()))
+        self.routing_paths = nx.all_pairs_dijkstra_path(logical_graph, weight = 'WEIGHT')
+        self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (self.routing_paths))
+        self.routing_paths_list = []
+        for (r1,r2) in self.get_logical_pairs():
+            if (not r1 in self.routing_paths.keys()) or (not r2 in self.routing_paths[r1].keys()):
+                self.debug.logger("set_routing_paths: not route from %s to %s " % (r1,r2) )
+                continue
+            path = self.routing_paths[r1][r2]
+            for ix in range(len(path)):
+                path[ix] = path[ix] % GEN
+            self.routing_paths_list.append(path)
+
+        return self.routing_paths_list
+
+
+    def reset_after_link_failure(self, link):
+        self.debug.logger("reset_after_link_failure: link = (%s,%s)" % (link))
+        new_paths = []
+        for path in self.l_net.get_paths():
+            if not (link in self.get_links_from_path(path)):
+                new_paths.append(path)
+        self.l_net.init_from_paths(new_paths)
+        return self.set_routing_paths()
+
+
+    '''
+        Return a dict:
+            route_path -> bw
+
+        BW comutation:
+            first we define average BW on link: link_capacity / num_of_routes_traversing
+            then we define the BW of a routing path to be the minimum of all its links
+    '''
+    def get_routing_with_bws(self):
+        link_to_bw = {}
+        link_to_traversing_routes = {}
+        for link in self.physical_links():
+            link_to_traversing_routes[link] = 0
+
+        for routing_path in self.routing_paths_list:
+            for link in self.get_links_from_path(routing_path):
+                link_to_traversing_routes[link] += 1
+                link_to_bw[link] = self.get_plink_capacity(link) / float(link_to_traversing_routes[link])
+
+        connection_data = {}
+        for route in self.routing_paths_list:
+            min_bw = MAX_CAP
+            for link in self.get_links_from_path(route):
+                min_bw = min(min_bw, link_to_bw[link])
+            connection_data[(route[0],route[1])] = {}
+            connection_data[(route[0],route[1])]['BW']    = min_bw
+            connection_data[(route[0],route[1])]['ROUTE'] = route
+        return connection_data
+
 
     def get_logical_network(self):
         return self.l_net
@@ -177,8 +282,7 @@ class OpticalNetwork:
 class LogicalNetwork:
     def __init__(self):
         '''
-            links: this is a dict:
-             - edge: num_logical_paths_traversing_e.
+            links: this is a dict that maps  edge to num_logical_paths_traversing_e.
              # while the end point of edge can be any 2 nodes
             paths: list of paths.
              - path: list of nodes v1, v2 ... , vk.  s.t: v1 and vk are logical nodes.
@@ -296,8 +400,9 @@ class LogicalNetwork:
     def get_routing_paths(self):
         return self.routing_paths
 
-    def update():
-        self.init_from_paths()
+    # update all data according to paths
+    def update(self):
+        self.init_from_paths(self.paths)
         self.calc_max_SRLG()
         self.init_link_to_paths_mapping()
         self.routing_paths = self.get_paths()
