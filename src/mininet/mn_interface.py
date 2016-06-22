@@ -170,11 +170,11 @@ class MNInterface(object):
         logical_paths = []
         if 'MANUAL'  == pathing_algo:   # this is for testing purposes
             #mmSrlg = MmSrlg.MM_SRLG_solver()                 # TODO: this is debug
-            #logical_paths = mmSrlg.mm_srlg(RUNNING_OPT_NET)  # this is just for debugging, need to remove
+            #logical_paths = mmSrlg.solve(RUNNING_OPT_NET)  # this is just for debugging, need to remove
             logical_paths = paths
         elif 'MM_SRLG' == pathing_algo:
             mmSrlg = MmSrlg.MM_SRLG_solver()
-            logical_paths = mmSrlg.mm_srlg(RUNNING_OPT_NET)
+            logical_paths = mmSrlg.solve(RUNNING_OPT_NET)
         else:
             self.debug.assrt(False, "set_running_opt_net: Unkown pathing algorithm!")
         RUNNING_OPT_NET.l_net.init_from_paths(logical_paths)

@@ -72,6 +72,9 @@ class OpticalNetwork:
         self.graph.add_edges_from(weighted_edges)
         self.input_graph = copy.deepcopy(self.graph)
 
+    '''
+        return all logical nodes in pairs (r1,r2) s.t. r1 < r2
+    '''
     def get_logical_pairs(self):
         pairs = []
         for r1 in sorted(self.get_logical_nodes()):
@@ -119,17 +122,20 @@ class OpticalNetwork:
         logical_graph = self.create_logical_graph()
         self.debug.logger("set_routing_paths: logical_graph=%s" % (logical_graph.edges()))
         self.routing_paths = nx.all_pairs_dijkstra_path(logical_graph, weight = 'WEIGHT')
-        self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (self.routing_paths))
+        #self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (self.routing_paths))
         self.routing_paths_list = []
-        for (r1,r2) in self.get_logical_pairs():
-            if (not r1 in self.routing_paths.keys()) or (not r2 in self.routing_paths[r1].keys()):
-                self.debug.logger("set_routing_paths: not route from %s to %s " % (r1,r2) )
-                continue
-            path = self.routing_paths[r1][r2]
-            for ix in range(len(path)):
-                path[ix] = path[ix] % GEN
-            self.routing_paths_list.append(path)
 
+        logical_pairs = self.get_logical_pairs()
+        for r1 in self.routing_paths.keys():
+            for r2 in self.routing_paths[r1].keys():
+                if (r1,r2) in logical_pairs:
+                    self.debug.logger("set_routing_paths: (r1,r2)=(%s,%s)" % (r1,r2))
+                    path = self.routing_paths[r1][r2]
+                    for ix in range(len(path)):
+                        path[ix] = path[ix] % GEN
+                    self.routing_paths_list.append(path)
+
+        self.debug.logger("set_routing_paths: routing_list=%s" % (self.routing_paths_list))
         return self.routing_paths_list
 
 
@@ -167,9 +173,10 @@ class OpticalNetwork:
             min_bw = MAX_CAP
             for link in self.get_links_from_path(route):
                 min_bw = min(min_bw, link_to_bw[link])
-            connection_data[(route[0],route[1])] = {}
-            connection_data[(route[0],route[1])]['BW']    = min_bw
-            connection_data[(route[0],route[1])]['ROUTE'] = route
+            connection_data[(route[0],route[-1])] = {}
+            connection_data[(route[0],route[-1])]['BW']    = min_bw
+            connection_data[(route[0],route[-1])]['ROUTE'] = route
+        self.debug.logger("connection_data=%s " % (connection_data))
         return connection_data
 
 
@@ -289,17 +296,11 @@ class LogicalNetwork:
                                                    and all the rest can be logical or non-logical nodes.
                                                    all nodes unique.
             routing_paths: the current paths that data is routed on. this can be different than paths
-                for example in case of failure: in this case the routers pairs which their path traversing
-                the failed link will need to find alternative path, BASED on the paths which produced by the
-                initial algorithm
+                           *** We insert it to OpticalNetwork. maybe more suitable here..
         '''
         self.debug = register_debugger('opticalNetwork')
-        self.links = {}
         self.paths = []
         self.max_SRLG = None
-        self.initialized = False
-        self.traversing_paths = {}
-        self.routing_paths = []
 
     def choose_arbitrary_subset_of_size_b(self, B):
         self.debug.assrt(len(self.paths) >= B, "choose_an_arb_subset_of_size_B: not enough paths!")
@@ -318,29 +319,35 @@ class LogicalNetwork:
                 max_link = link
         self.debug.assrt(max_link != None, "calc_max_SRLG: didnt find max SRLG!")
         self.max_SRLG = max_srlg
-
-    def get_max_SRLG(self):
-        self.calc_max_SRLG()
         return self.max_SRLG
 
     def merge(self, logical_network):
-        self.paths = self.paths + logical_network.paths
+        self.paths = self.paths + logical_network.get_paths()
         self.init_from_paths(self.paths)
 
     def init_from_paths(self, paths):
         self.paths = paths
         self.links = {}
-        for path in paths:
-            self.debug.assrt(len(path) > 1, 'init_from_paths: path with length 1')
-            for i in range(0, len(path) - 1):
-                edge = (path[i], path[i+1])
-                (i,j) = (min(edge[0], edge[1]), max(edge[0], edge[1]))
-                if (i,j) in self.links.keys():
-                    self.links[(i,j)] += 1
+        self.traversing_paths = {}
+
+        for path in self.paths:
+            self.debug.assrt(len(path) > 1, 'init_link_to_paths: path with length 1')
+            for node_ix in range(len(path)-1):
+                link = (path[node_ix], path[node_ix+1])
+                if link in self.traversing_paths.keys():
+                    self.traversing_paths[link].append(path)
+                    self.links[link] += 1
                 else:
-                    self.links[(i,j)] =  1
-        self.initialized = True
+                    self.traversing_paths[link] = [path]
+                    self.links[link] = 1
+        self.debug.logger("init_from_paths: links=%s. paths=%s" % (self.links, self.paths))
         return self
+
+    # update all data according to paths
+    def update(self):
+        self.init_from_paths(self.paths)
+        self.calc_max_SRLG()
+
 
     '''
         we assume here that num_lightpaths_via_e = num_logicallinks_over_e
@@ -375,14 +382,6 @@ class LogicalNetwork:
                     paths[j] = paths[j+1]
                     paths[j] = tmp_path
 
-    def init_link_to_paths_mapping(self):
-        for path in self.paths:
-            for node_ix in range(len(path)-1):
-                link = (path[node_ix], path[node_ix+1])
-                if link in self.traversing_paths.keys():
-                    self.traversing_paths[link].append(path)
-                else:
-                    self.traversing_paths[link] = [path]
 
     ''' return list of paths traversing via this link '''
     def get_traversing_paths(self, link):
@@ -396,16 +395,7 @@ class LogicalNetwork:
     def set_paths(self, paths_in):
         self.paths = paths_in
 
-    #TODO: DO IT!
-    def get_routing_paths(self):
-        return self.routing_paths
 
-    # update all data according to paths
-    def update(self):
-        self.init_from_paths(self.paths)
-        self.calc_max_SRLG()
-        self.init_link_to_paths_mapping()
-        self.routing_paths = self.get_paths()
 
 
 

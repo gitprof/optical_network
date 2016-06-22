@@ -2,7 +2,7 @@ import sys
 import imp
 import os
 
-Global = imp.load_source('Global', os.path.join('src', 'main', 'Global.py'))
+Global = imp.load_source('Global', os.path.join('/home/mininet', 'optical_network', 'src', 'main', 'Global.py'))
 from Global import *
 
 Debug = imp.load_source('Debug', os.path.join(MAIN_DIR, 'utilities', 'Debug.py'))

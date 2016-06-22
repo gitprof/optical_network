@@ -44,12 +44,12 @@ class MM_SRLG_solver:
             print('C: '+str(C))
             opt_network.set_strict_capacity(C)
             logical_network = self.ALG(opt_network)
-            if len(logical_network.paths) >= opt_network.B:
+            if len(logical_network.get_paths()) >= opt_network.B:
                 break
         self.debug.assrt(logical_network != None, 'mm_slrg_arb: logical_network is None!')
         logical_network.choose_arbitrary_subset_of_size_b(opt_network.B)
         self.debug.logger('mm_srlg_arb: produced logical network: ')
-        self.debug.logger(logical_network.paths)
+        self.debug.logger(logical_network.get_paths())
         return logical_network
 
     def produce_cycle_aux(self, tree, cycle, ans, node):
@@ -122,7 +122,7 @@ class MM_SRLG_solver:
         self.debug.logger('mm_srlg_cycle: produced logical network: %s ' % logical_network.get_paths())
         return logical_network
 
-    def mm_srlg(self, opt_network):
+    def solve(self, opt_network):
         self.debug.assrt(opt_network.B >= len(opt_network.get_logical_nodes()), "mm_srlg: B must be bigger than num of logical nodes!")
         cycle_net = opt_network.clone()
         self.debug.assrt((opt_network != None) and (opt_network.B == cycle_net.B), 'mm_slrg: opt_network invalid!')
@@ -135,6 +135,7 @@ class MM_SRLG_solver:
         print('mm_srlg: B left after cycle = '+str(opt_network.B))
         EL_arb        = self.mm_srlg_arb(opt_network) if (opt_network.B > 0) else LogicalNetwork()
         EL_arb.merge(EL_cycle)
+        opt_network.l_net = EL_arb
         return EL_arb
 
     ''' Here we assume only 1 logical path between 2 routers
@@ -197,7 +198,7 @@ class MM_SRLG_solver:
         logical_network = LogicalNetwork()
         logical_network.init_from_paths(logical_paths)
         self.debug.logger('ALG: produced logical network: ')
-        self.debug.logger(logical_network.paths)
+        self.debug.logger(logical_network.get_paths())
         return logical_network
 
 

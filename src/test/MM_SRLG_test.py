@@ -64,14 +64,14 @@ def generic_alg_tester(test_name, algorithm, graph_file, expected_paths):
     if 'MM_SRLG' == algorithm:
         logical_network = mm_srlg_solver.mm_srlg(optNet)
     debug.assrt(None != logical_network, test_name+": logical_network is None!")
-    # sort_paths(logical_network.paths)
+    # sort_paths(logical_network.get_paths())
     expected_paths = None # there is no simple way to check correctness
     #optNet.draw()
     if expected_paths != None:
-        TestEqual(expected_paths, logical_network.paths, 'paths not equal!\n')
+        TestEqual(expected_paths, logical_network.get_paths(), 'paths not equal!\n')
     else:
         Xprint('Paths:')
-        Xprint(logical_network.paths)
+        Xprint(logical_network.get_paths())
         Xprint('Max SRLG:')
         Xprint(logical_network.get_max_SRLG())
 
