@@ -11,12 +11,19 @@ HOSTS=( )
 
 # processing params:
 for node in $@; do
-    node_type='expr substr $node 1 1'
-    if [[ "s" = node_type ]]; then
+    node_type=`expr substr $node 1 1`
+    echo $node_type
+    echo $node
+    if [[ "s" == $node_type ]]; then
+        echo YES
         SWITCHES=( ${SWITCHES[@]} $node )
     else # h
         HOSTS=( ${HOSTS[@]} $node )
     fi
+done
+
+for sw in ${SWITCHES[@]}; do
+    echo $sw
 done
 
 function PrintTable {
@@ -58,8 +65,8 @@ function PrintHostsIPs {
 
 echo "Dumping..."
 PrintAllTables
-PrintHostsARP
-PrintHostsIPs
+#PrintHostsARP
+#PrintHostsIPs
 echo "Done!"
 
 # sudo ovs-ofctl del-flows s3

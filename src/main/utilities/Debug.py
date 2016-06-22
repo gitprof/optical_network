@@ -17,13 +17,12 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 NO_COLOR = True
+DEFAULT_LOG_LEVEL = 0
 
 class Debug:
     def __init__(self, log_filename = LOG_FILENAME):
         self.kill_on_assrt = True
-        self.curr_log_level = 2 # 0 - tmp prints.
-                                # 1 - logs.
-                                # 2 - errors
+        self.curr_log_level = DEFAULT_LOG_LEVEL
         if not os.path.isdir(LOGS_DIR):
             os.makedirs(LOGS_DIR)
         self.flog = open(log_filename, 'w')

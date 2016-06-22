@@ -63,6 +63,7 @@ class OpticalNetwork:
                 if not (int(edge[i][1:]) in self.logical_nodes):
                     if 'r' == edge[i][0]:
                         self.logical_nodes.append(int(edge[i][1:]))
+        self.debug.logger("init_graph_from_file: logical_nodes=%s", self.logical_nodes)
         weighted_edges = [(int(edge[0][1:]), int(edge[1][1:]), {'capacity':input_edges[edge]}) for edge in input_edges.keys()]
         self.graph.add_edges_from(weighted_edges)
         self.input_graph = copy.deepcopy(self.graph)
