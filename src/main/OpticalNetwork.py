@@ -23,18 +23,23 @@ Graph attributes:
 '''
 GEN = 100
 DEF_INC_FACTOR = 20
-MAX_CAP = 40
+MAX_EDGE_CAPACITY = 10
 
 class OpticalNetwork:
-    def __init__(self):
+    def __init__(self, master = False):
         print(type(Global))
         self.graph = nx.Graph()
         self.B     = 0 # default
         self.l_net = LogicalNetwork()
         #self.l_net = Set()
-        self.debug = register_debugger()
+        self.debug = register_debugger(master = master)
         self.logical_nodes = []
         self.input_graph = None
+
+
+    def destroy(self):
+        close_debugger()
+
     '''
     Assume file of format:
     B,<B_val>
@@ -96,15 +101,15 @@ class OpticalNetwork:
 
     def create_logical_graph(self, inc_factor = DEF_INC_FACTOR):
         self.debug.logger("create_logical_graph:")
-        self.logical_graph = nx.Graph()
+        logical_graph = nx.Graph()
         gen = GEN
 
         for path in self.l_net.get_paths():
             self.debug.logger("create_logical_graph: process path = %s" % (path))
             self.debug.assrt(path >= 2, "create_logical_graph: bad logical path!")
             r1, r2 = path[0], path[-1]
-            self.logical_graph.add_node(r1)
-            self.logical_graph.add_node(r2)
+            logical_graph.add_node(r1)
+            logical_graph.add_node(r2)
             links = self.get_links_from_path(path)
             #formatted_nodes = [node+gen for node in path if ((node != r1) and (node != r2))]
             for link in links:
@@ -112,27 +117,42 @@ class OpticalNetwork:
                 a = link[0] if ((link[0] == r1) or (link[0] == r2)) else link[0]+gen
                 b = link[1] if ((link[1] == r1) or (link[1] == r2)) else link[1]+gen
                 self.debug.logger(link)
-                self.logical_graph.add_edge(a, b, weight = weight)
+                logical_graph.add_edge(a, b, weight = weight)
             gen += GEN
-        self.debug.logger("create_logical_graph: logical_graph = %s" % (self.logical_graph.edges()))
+        self.debug.logger("create_logical_graph: logical_graph = %s" % (logical_graph.edges()))
 
-        return self.logical_graph
+        return logical_graph
+
+    def get_routing_paths(self):
+        return self.routing_paths_list
 
     def set_routing_paths(self):
         logical_graph = self.create_logical_graph()
         self.debug.logger("set_routing_paths: logical_graph=%s" % (logical_graph.edges()))
-        self.routing_paths = nx.all_pairs_dijkstra_path(logical_graph, weight = 'WEIGHT')
-        #self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (self.routing_paths))
+        routing_paths = nx.all_pairs_dijkstra_path(logical_graph, weight = 'WEIGHT')
+        #self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (routing_paths))
         self.routing_paths_list = []
-
         logical_pairs = self.get_logical_pairs()
-        for r1 in self.routing_paths.keys():
-            for r2 in self.routing_paths[r1].keys():
+        for r1 in routing_paths.keys():
+            for r2 in routing_paths[r1].keys():
                 if (r1,r2) in logical_pairs:
                     self.debug.logger("set_routing_paths: (r1,r2)=(%s,%s)" % (r1,r2))
-                    path = self.routing_paths[r1][r2]
-                    for ix in range(len(path)):
-                        path[ix] = path[ix] % GEN
+
+                    # route over all pairs
+                    #path = routing_paths[r1][r2]
+                    #for ix in range(len(path)):
+                    #    path[ix] = path[ix] % GEN
+
+                    # or route just over pairs not in in a logical path. (switch to first if it makes problems)
+                    path = None
+                    for _path in self.l_net.get_paths():
+                        if r1 == _path[0] and r2 == _path[1]:
+                            path = copy.deepcopy(_path)
+                    if path == None:
+                        path = routing_paths[r1][r2]
+                        for ix in range(len(path)):
+                            path[ix] = path[ix] % GEN
+
                     self.routing_paths_list.append(path)
 
         self.debug.logger("set_routing_paths: routing_list=%s" % (self.routing_paths_list))
@@ -146,7 +166,23 @@ class OpticalNetwork:
             if not (link in self.get_links_from_path(path)):
                 new_paths.append(path)
         self.l_net.init_from_paths(new_paths)
-        return self.set_routing_paths()
+        return  self.set_routing_paths()
+
+    def calc_paths_diffs(self, olds, news):
+        diffs = []
+        for old in olds:
+            for new in news:
+                if old[0] == new[0] and old[-1] == new[-1]:
+                    diffs.append((old, new))
+        return diffs
+
+    def get_modified_routing_paths(self, olds, news):
+        modifieds = []
+        diffs = self.calc_paths_diffs(olds, news)
+        for diff in diffs:
+            if diff[0] != diff[1]:
+                modifieds.append(diff[1])
+        return modifieds
 
 
     '''
@@ -170,7 +206,7 @@ class OpticalNetwork:
 
         connection_data = {}
         for route in self.routing_paths_list:
-            min_bw = MAX_CAP
+            min_bw = MAX_EDGE_CAPACITY
             for link in self.get_links_from_path(route):
                 min_bw = min(min_bw, link_to_bw[link])
             connection_data[(route[0],route[-1])] = {}
@@ -298,7 +334,7 @@ class LogicalNetwork:
             routing_paths: the current paths that data is routed on. this can be different than paths
                            *** We insert it to OpticalNetwork. maybe more suitable here..
         '''
-        self.debug = register_debugger('opticalNetwork')
+        self.debug = register_debugger()
         self.paths = []
         self.max_SRLG = None
 
@@ -394,6 +430,7 @@ class LogicalNetwork:
 
     def set_paths(self, paths_in):
         self.paths = paths_in
+
 
 
 

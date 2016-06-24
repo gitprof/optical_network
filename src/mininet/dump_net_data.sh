@@ -11,7 +11,7 @@ HOSTS=( )
 
 # processing params:
 for node in $@; do
-    node_type=`expr substr $node 1 1`
+    node_type=`expr substr $node 2 2`
     echo $node_type
     echo $node
     if [[ "s" == $node_type ]]; then

@@ -16,6 +16,7 @@ from Global import *
 
 OptNet  = imp.load_source('OpticalNetwork', os.path.join(MAIN_DIR, 'OpticalNetwork.py'   ))
 MM_SRLG = imp.load_source('MM_SRLG',        os.path.join(MAIN_DIR, 'MM_SRLG.py'          ))
+DP      = imp.load_source('DP',             os.path.join(MAIN_DIR, 'DP.py'          ))
 Debug   = imp.load_source('Debug',          os.path.join(MAIN_DIR, 'utilities', 'Debug.py' ))
 
 from Common import *
@@ -77,16 +78,25 @@ def get_opt_net(graph):
     optNet.init_graph_from_file(os.path.join(GRAPH_DIR, graph))
     return optNet
 
-def gen_test(test_num, graph, algo, fail_link):
+
+def gen_test(test_num, graph, algo, fail_link, paths = None):
     debug.logger('\n\n\nOOO ---gen_test %s. ---' % (test_num))
     debug.logger('\nOOO  graph: %s. algo: %s. failing link: %s.' % (graph, algo, fail_link))
     #logical_paths = [[1,4,2],[1,3,2]]
+    optNet = get_opt_net(graph)
     if   'MM_SRLG' == algo:
         algo = MM_SRLG.MM_SRLG_solver()
-    else:  #'DP'      == alog:
-        algo = DP()
-    optNet = get_opt_net(graph)
-    algo.solve(optNet)
+        algo.solve(optNet)
+    elif 'DP'      == algo:
+        algo = DP.DP()
+        algo.solve(optNet)
+    elif 'MANUAL' == algo:
+        assert paths != None, "gen_test: MANUAL but no paths!"
+        logNet = OptNet.LogicalNetwork()
+        logNet.init_from_paths(paths)
+        optNet.l_net = logNet
+    else:
+        assert False, "gen_test: Unkwon algo!"
     debug.logger("gen_test: logical_paths=%s" % (optNet.get_logical_network().get_paths()))
     optNet.l_net.update()
     optNet.create_logical_graph()
@@ -112,7 +122,12 @@ Add here tests:
 '''
 def algo_tester_main():
     debug.logger('\n***** AlgoTester *****')
-    test_link_failures('test1.g', 'MM_SRLG')
+    #test_link_failures('test1.g', 'MM_SRLG')
+    #gen_test(1, 'tmp.g', 'MANUAL', (2,4), paths = [[2,4,1]])
+    gen_test(1, 'test8.g', 'DP', (13,15), paths = None)
+
+    gen_test(1, 'test8.g', 'MM_SRLG', (13,15), paths = None)
+    #gen_test(1, 'star.g', 'MANUAL', (1,5), paths = [[1,5,6,3],[3,6,5,2],[2,5,6,4]])
     #test_link_failures('test1.g', 'DP')
 
 

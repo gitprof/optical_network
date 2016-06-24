@@ -51,6 +51,7 @@ class Debug:
             if type(msg) != type('str'):
                 return
             msg = msg+'\n'
+            return
             self.flog.write(msg)
             if log_level >= 2:
                 self.ferr.write(msg)

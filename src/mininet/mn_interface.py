@@ -20,6 +20,9 @@ Global  = imp.load_source('Global', os.path.join(global_dir, 'Global.py'))
 from Global import *
 OptNet  = imp.load_source('OpticalNetwork', os.path.join(MAIN_DIR, 'OpticalNetwork.py'))
 MmSrlg  = imp.load_source('MM_SRLG',        os.path.join(MAIN_DIR, 'MM_SRLG.py'))
+DP      = imp.load_source('DP',             os.path.join(MAIN_DIR, 'DP.py'))
+ProcessIperfRes  = imp.load_source('process_iperf_res',             os.path.join(TEST_DIR, 'process_iperf_res.py'))
+
 
 
 '''
@@ -62,14 +65,14 @@ class TopoFormat(Topo):
         # add hosts
         hosts = {}
         for node in optNet.get_logical_nodes():
-	    if init_ip and init_mac:
+            if init_ip and init_mac:
                 host = self.addHost('h%d'% node, ip='0.0.0.0', mac=self.hostid_to_mac(node)) #DONT DO IT UNLESS U SET DHCLIENTS
-	    elif init_ip:
+            elif init_ip:
                 host = self.addHost('h%d'% node, ip='0.0.0.0') #DONT DO IT UNLESS U SET DHCLIENTS
-	    if init_mac:
+            if init_mac:
                 host = self.addHost('h%d'% node, mac=self.hostid_to_mac(node))
-	    else:
-	        host = self.addHost('h%d'% node)
+            else:
+                host = self.addHost('h%d'% node)
             hosts[node] = host
 
         # add switches
@@ -129,18 +132,18 @@ class MNInterface(object):
         self.debug = register_debugger()
         self.net = None
         self.host_to_ip = {}
-	self.ctrlr_params = None
+        self.ctrlr_params = None
         self.set_running_opt_net(opt_net_file, pathing_algo, paths)
         RUNNING_INTERFACE = self
 
     def use_dhclient_controller(self):
-	return (None != self.ctrlr_params) and (self.ctrlr_params.find('topo_proactive') != -1)
+    	return (None != self.ctrlr_params) and (self.ctrlr_params.find('topo_proactive') != -1)
 
 
     def optical_network_to_mn_topo(self):
         #self.verify()
         topoFormat = TopoFormat()
-	init_ip = self.use_dhclient_controller()
+    	init_ip = self.use_dhclient_controller()
         init_mac = self.set_simple_mac
         topoFormat.set_topo(RUNNING_OPT_NET, init_ip, init_mac)
         return topoFormat
@@ -172,13 +175,17 @@ class MNInterface(object):
             #mmSrlg = MmSrlg.MM_SRLG_solver()                 # TODO: this is debug
             #logical_paths = mmSrlg.solve(RUNNING_OPT_NET)  # this is just for debugging, need to remove
             logical_paths = paths
+            RUNNING_OPT_NET.l_net.init_from_paths(logical_paths)
         elif 'MM_SRLG' == pathing_algo:
-            mmSrlg = MmSrlg.MM_SRLG_solver()
-            logical_paths = mmSrlg.solve(RUNNING_OPT_NET)
+            algo = MmSrlg.MM_SRLG_solver()
+            algo.solve(RUNNING_OPT_NET)
+        elif 'DP'      == pathing_algo:
+            algo = DP.DP()
+            algo.solve(RUNNING_OPT_NET)
         else:
             self.debug.assrt(False, "set_running_opt_net: Unkown pathing algorithm!")
-        RUNNING_OPT_NET.l_net.init_from_paths(logical_paths)
         self.running_opt_net = RUNNING_OPT_NET
+        logical_paths = self.running_opt_net.l_net.get_paths()
         self.serialize_opt_net(graph_file, logical_paths)
 
     def verify(self):
@@ -197,7 +204,7 @@ class MNInterface(object):
                 # ip = ni.ifaddresses(intf)[ni.AF_INET][0]['addr']
                 cmd="%s %s ifconfig %s | grep inet | grep -v inet6 | cut -d: -f2 | awk '{print $1}'" % (SSH_HOST, node.name, intf)
                 #os.system(cmd)  # TODO: need to replace it with subprocess.call. or at least remove the output
-		ip = 0
+                ip = 0
                 self.host_to_ip[node.name] = ip
                 #assert (ip != "") and (ip != "0"), "Dhclient %s didnt get IP addr for %s!" % (node.name, intf)
                 #self.debug.logger("IP:%s %s" % (node.name, ip) )
@@ -209,7 +216,7 @@ class MNInterface(object):
                 #assert self.host_to_ip != None, "set_arp_tables: host didnt assigned with IP!"
                 dns_ip  = DNS_IP
                 dns_mac = DNS_MAC
-                self.debug.logger("set_arp_tables: node=%s. ip=%s. mac=%s" % (node.name, dns_ip, dns_mac) )
+                self.debug.logger("set_dns_in_arp_tables: node=%s. ip=%s. mac=%s" % (node.name, dns_ip, dns_mac) )
                 node.setARP(dns_ip, dns_mac)
 
 
@@ -224,8 +231,8 @@ class MNInterface(object):
 	elif 'RYU' == self.ctrlr_type:
         	self.ctrlr_dir=RYU_DIR
 		ctrlr_params_debug="--verbose"
-		self.ctrlr_params="%s/ryu/app/simple_switch.py  %s" % (self.ctrlr_dir, ctrlr_params_debug)
-		#self.ctrlr_params="--observe-links %s/ryu/app/static_routing.py  %s" % (self.ctrlr_dir, ctrlr_params_debug)
+		#self.ctrlr_params="%s/ryu/app/simple_switch.py  %s" % (self.ctrlr_dir, ctrlr_params_debug)
+		self.ctrlr_params="--observe-links %s/ryu/app/static_routing.py  %s" % (self.ctrlr_dir, ctrlr_params_debug)
 		#self.ctrlr_params="--observe-links %s/ryu/app/shortestpath.py  %s" % (self.ctrlr_dir, ctrlr_params_debug)
 		#self.ctrlr_params="ryu/topology/switches.py  %s" % (ctrlr_params_debug)
 		#self.ctrlr_params="ryu/app/rest_router.py  %s" % (ctrlr_params_debug)
@@ -234,81 +241,106 @@ class MNInterface(object):
 	else:
 		self.debug.assrt(False, 'set_controller_params: Unkown controller!')
 
-
     def start_controller(self):
-	if   'POX' == self.ctrlr_type:
-		start_controller_cmd= "%s/pox.py %s" %  (self.ctrlr_dir, self.ctrlr_params)
-	elif 'RYU' == self.ctrlr_type:
-		start_controller_cmd= "PYTHONPATH=. %s/bin/ryu-manager %s" %  (self.ctrlr_dir, self.ctrlr_params)
-	else:
-		self.debug.assrt(False, 'start_controller: Unkown controller!')
+        if   'POX' == self.ctrlr_type:
+            start_controller_cmd= "%s/pox.py %s" %  (self.ctrlr_dir, self.ctrlr_params)
+        elif 'RYU' == self.ctrlr_type:
+            start_controller_cmd= "PYTHONPATH=. %s/bin/ryu-manager %s" %  (self.ctrlr_dir, self.ctrlr_params)
+        else:
+            self.debug.assrt(False, 'start_controller: Unkown controller!')
 
         self.controller_logfile = CONTROLLER_LOG_FILE
-	cmd="sudo xterm -geometry 200x50+10+10  -e \"%s  |& tee  %s \"  &" % (start_controller_cmd, self.controller_logfile)
-	#cmd="sudo %s  &" % (start_controller_cmd)
+        dont_show="PacketIn"
+        cmd="sudo xterm -geometry 200x50+10+10  -e \"%s |& egrep -v PacketIn  |& tee  %s  \"  &" % (start_controller_cmd, self.controller_logfile)
+        #cmd="sudo %s  &" % (start_controller_cmd)
 
-	self.debug.logger(cmd)
-	os.popen(cmd)
-	self.controller_ip = CONTROLLER_IP
-	time.sleep(RESTIME)
-	self.net.addController( 'c0',
-			    controller=RemoteController,
-			    ip=self.controller_ip,
-			    port=6633)
+        self.debug.logger(cmd)
+        os.popen(cmd)
+        self.controller_ip = CONTROLLER_IP
+        time.sleep(RESTIME)
+        self.net.addController( 'c0',
+                    controller=RemoteController,
+                    ip=self.controller_ip,
+                    port=6633)
 
 
     def dump_net_data(self, _print = False):
-	self.debug.logger('dumping data...')
+        self.debug.logger('dumping data...')
         params=""
-	os.system('echo \"--------\" > %s' % (DUMP_NET_OUTPUT_FILE))
-	self.debug.logger('dumping FlowTables...')
-	for sw in self._topo.switches():
-	    os.system('echo \"%s flow-table:\" >> %s ' % (sw, DUMP_NET_OUTPUT_FILE))
+        os.system('echo \"--------\" > %s' % (DUMP_NET_OUTPUT_FILE))
+        self.debug.logger('dumping FlowTables...')
+        for sw in self._topo.switches():
+            os.system('echo \"%s flow-table:\" >> %s ' % (sw, DUMP_NET_OUTPUT_FILE))
             cmd="sudo ovs-ofctl dump-flows %s | cut -d\",\" -f 7- >> %s" % (sw, DUMP_NET_OUTPUT_FILE)
-	    #os.popen(cmd)
-	    os.system(cmd)
+            #os.popen(cmd)
+            os.system(cmd)
 
-	self.debug.logger('dumping NetAddrs...')
-	os.system('echo \"---------\" >> %s' % (DUMP_NET_OUTPUT_FILE))
-	for host in self._topo.hosts():
-	    os.system('echo \"%s IP:\"  >> %s' % (host, DUMP_NET_OUTPUT_FILE  ))
+        self.debug.logger('dumping NetAddrs...')
+        os.system('echo \"---------\" >> %s' % (DUMP_NET_OUTPUT_FILE))
+        for host in self._topo.hosts():
+            os.system('echo \"%s IP:\"  >> %s' % (host, DUMP_NET_OUTPUT_FILE  ))
             cmd="sudo %s %s ifconfig %s-eth0 | egrep \"inet|HWaddr\" | grep -v inet6 >> %s" % (SSH_HOST, host, host, DUMP_NET_OUTPUT_FILE)  #  | cut -d: -f2 | awk '{print $1}'
-	    #os.popen(cmd)
-	    os.system(cmd)
+            #os.popen(cmd)
+            os.system(cmd)
 
-        if False:
-            self.debug.logger('dumping ARPs...')
-            os.system('echo \"--------\" >> %s' % (DUMP_NET_OUTPUT_FILE))
-            for host in self._topo.hosts():
-                os.system('echo \"%s ARP:\" >> %s' % (host, DUMP_NET_OUTPUT_FILE  ))
-                cmd="sudo %s %s arp >> %s" % (SSH_HOST, host, DUMP_NET_OUTPUT_FILE)  #  | cut -d: -f2 | awk '{print $1}'
-                os.system(cmd)
+            if False:
+                self.debug.logger('dumping ARPs...')
+                os.system('echo \"--------\" >> %s' % (DUMP_NET_OUTPUT_FILE))
+                for host in self._topo.hosts():
+                    os.system('echo \"%s ARP:\" >> %s' % (host, DUMP_NET_OUTPUT_FILE  ))
+                    cmd="sudo %s %s arp >> %s" % (SSH_HOST, host, DUMP_NET_OUTPUT_FILE)  #  | cut -d: -f2 | awk '{print $1}'
+                    os.system(cmd)
 
-	self.debug.logger('Print to screen...')
-	if _print:
-	    with file(DUMP_NET_OUTPUT_FILE) as f:
-	        self.debug.logger(f.read(), log_level = 1)
+        self.debug.logger('Print to screen...')
+        if _print:
+            with file(DUMP_NET_OUTPUT_FILE) as f:
+                self.debug.logger(f.read(), log_level = 1)
 
     def test_ping(self, hosts = None):
-	self.debug.logger("test_ping: hosts=%s" % (hosts))
+        self.debug.logger("test_ping: hosts=%s" % (hosts))
         #if None == hosts:
         #    hosts = self._topo.hosts()
         self.net.pingAll(timeout = RESTIME) # TODO: get host, not names.
 
     def test_iperf(self, hosts = None):
-	self.debug.logger("test_iperf: hosts=%s" % (hosts))
+        self.debug.logger("test_iperf: hosts=%s" % (hosts))
         #if None == hosts:
         #    hosts = self._topo.hosts()
 
-        self.net.iperf(hosts = hosts, l4Type = 'UDP')
+        self.net.iperf(hosts = hosts, l4Type = 'TCP')
+
+    def run_link_failure_test(self, sw_id1, sw_id2):
+        cmd = "link %s %s down" % (sw_id1, sw_id2)
+        self.debug.logger(cmd)
+        self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'down')
+        time.sleep(1)
+        hosts = self.running_opt_net.get_logical_nodes()
+        perf_results = ProcessIperfRes.run_test(hosts)
+        cmd = "link %s %s up" % (sw_id1, sw_id2)
+        self.debug.logger(cmd)
+        self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'up')
+        time.sleep(1)
+        print("run_link_failure_test: perf_results=%s " % (perf_results))
+        return perf_results
+
+    def resillience_test(self):
+        self.link_to_perf_results = {}
+        for sw_id1, sw_id2 in self.running_opt_net.physical_links():
+            link = (sw_id1, sw_id2)
+            self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
+            self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
+        print("resillience_test: link_to_perf_res=%s " % (self.link_to_perf_results))
+
+    def get_last_test_results(self):
+        return self.link_to_perf_results
 
     def clean_up(self):
         os.popen("sudo killall -9 xterm &> /dev/null") # TODO: kill by PID
         os.popen("sudo mn -c > /dev/null")
 
     def close_controller(self):
- 	os.popen("sudo killall -9 xterm > /dev/null") # TODO: kill by PID
-        self.debug.logger('controller log file at %s' % (CONTROLLER_LOG_FILE))
+        os.popen("sudo killall -9 xterm > /dev/null") # TODO: kill by PID
+        self.debug.logger('controller log file at %s' % (self.controller_logfile))
 
     def start_mn_session(self, controller = None,
                                staticArp = False,
@@ -321,7 +353,7 @@ class MNInterface(object):
 
         self.set_simple_mac = simpleMac
         self.ctrlr_type = controller
-	self.clean_up()
+        self.clean_up()
         if controller != None:
 	    self.set_controller_params()
 
@@ -336,15 +368,16 @@ class MNInterface(object):
 
 
         self.net.start()
-	time.sleep(int(RESTIME/2))
+    	time.sleep(int(RESTIME/2))
 
         if staticArp == True:
-            self.set_dns_in_arp_tables()
+            DONOTHING = 0
+            #self.set_dns_in_arp_tables()
 
-	if self.use_dhclient_controller():
+        if self.use_dhclient_controller():
 	    self.set_dhclients()
 
-	time.sleep(int(RESTIME))
+        time.sleep(int(RESTIME))
 
         if Monitor:
             for host in self._topo.hosts():
@@ -359,12 +392,16 @@ class MNInterface(object):
 	    CLI( self.net )
 
         if Test:
-            self.test_ping()
+            self.resillience_test()
+            #self.test_ping()
             #self.test_iperf()
+            ''' Iperf Command:
+                iperf -c <server> -t <time> -i <print_interval> -P <num_processes> -d <bidirectional>
+            '''
 
         if Dump:
             self.dump_net_data(_print = True)
-	    RUNNING_OPT_NET.draw()
+	        #RUNNING_OPT_NET.draw()
 
         if Hold:
             raw_input("Press Enter to finish...")

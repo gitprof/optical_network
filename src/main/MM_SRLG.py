@@ -7,7 +7,6 @@ from pulp import *
 import numpy as np
 import imp
 import math
-import copy
 import os
 import copy
 from OpticalNetwork import LogicalNetwork
@@ -98,8 +97,12 @@ class MM_SRLG_solver:
                 curr_path = [node]
         return paths
 
-
+    '''
+    Requirements:
+    - B >= num_logical_nodes
+    '''
     def mm_srlg_cycle(self, opt_network):
+        self.debug.assrt(opt_network.B >= len(opt_network.get_logical_nodes()), "mm_srlg_cycle: B must be bigger than number of logical nodes!")
         self.debug.logger('mm_srlg_cycle: optical_network: %s' % opt_network.physical_links())
         spanning_tree = opt_network.create_spanning_tree()
         self.debug.logger('mm_srlg_cycle: initial_tree: %s' % spanning_tree.edges())
@@ -194,6 +197,7 @@ class MM_SRLG_solver:
         edge_to_capacity = copy.deepcopy(physical_links)
         for (i,j) in physical_links.keys():
             edge_to_capacity[(j,i)] = physical_links[(i,j)]
+        self.debug.logger("V_p=%s. E_p=%s. V_l=%s. edge_to_capacity=%s" % (V_p, E_p, V_l, edge_to_capacity))
         logical_paths = self.ALG_inner(V_p, E_p, V_l, edge_to_capacity)
         logical_network = LogicalNetwork()
         logical_network.init_from_paths(logical_paths)
