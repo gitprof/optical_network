@@ -33,7 +33,6 @@ HOST_CMD="~/mininet/util/m"
 SWITCHES=( )
 HOSTS=( )
 
-DEBUG_MOD=0
 
 # processing params:
 for host in $@; do
@@ -45,9 +44,13 @@ function host_to_ip {
     echo "10.0.0.$1"
 }
 
+export LC_ALL=C
 
 
-TIME=15
+DEBUG_MOD=0
+NUM_CONNECTIONS=$(( ((  (( ${#HOSTS[@]} * ${#HOSTS[@]} )) - ${#HOSTS[@]} )) / 2  ))
+TIME=$((  NUM_CONNECTIONS * 6 ))
+#WAIT_TO_SERVER=0.7
 BASE_DIR="/home/mininet/optical_network/test_logs/"
 LOGS_DIR=$BASE_DIR"iperf_logs/"
 LOG_FILE=${LOGS_DIR}"iperf"
@@ -65,33 +68,67 @@ fi
 sudo chmod -R 777 $BASE_DIR
 
 xterm_params=" -hold -geometry 200x150"
-port=5000
+
+START_TIME=$SECONDS
+
+function print_time {
+    echo $(( $SECONDS - $START_TIME  ))
+}
 
 
 function runAll2AllIPerf {
     sudo killall iperf > /dev/null
     iperf_params="-t $TIME -i 1  -P 5 -f m"
+    port=5000
     for host1 in ${HOSTS[@]}; do
         for host2 in ${HOSTS[@]}; do
-            if (( $host1 >= $host2 )) ; then
-                continue
+            if (( $host2 >= $host1 )) ; then
+                break
             fi
             server_log_file="${LOG_FILE}_${host1}_from_${host2}"
-            client_log_file="${LOG_FILE}_${host2}_to_${host1}"
-            rm -f $server_log_file $client_log_file
-            echo "running iperf $host2 -> $host1"
+            rm -f $server_log_file
             port=$(( port + 1 ))
             filter="" #; | cut -d\"t\" -f 2-  "
-            if (( $DEBUG_MOD == 1 )); then
-                echo $cmd
-                cmd="xterm $xterm_params  -e \"$HOST_CMD h$host1 iperf -s $iperf_params -p $port |& tee ${server_log_file} \" & sleep 0.3 ;  xterm $xterm_params  -e \"$HOST_CMD h$host2 iperf -c `host_to_ip $host1` $iperf_params -p $port  |& tee ${client_log_file}  \" &"
-            else
-                cmd="$HOST_CMD h$host1 iperf -s $iperf_params -p $port |& tee ${server_log_file}  & sleep 0.3 ; $HOST_CMD h$host2 iperf -c `host_to_ip $host1` $iperf_params -p $port  |& tee ${client_log_file}  &"
-            fi
 
-            eval $cmd
+            #client_log_file="${LOG_FILE}_${host2}_to_${host1}"
+            #server_cmd="xterm $xterm_params  -e \"$HOST_CMD h$host1 iperf -s                     $iperf_params -p $port |& tee ${server_log_file}\" &"
+            server_cmd="$HOST_CMD h$host1 iperf -s                     $iperf_params -p $port |& tee ${server_log_file} > /dev/null &"
+            #client_cmd="xterm $xterm_params  -e \"$HOST_CMD h$host2 iperf -c `host_to_ip $host1` $iperf_params -p $port |& tee ${client_log_file}\" &"
+            #client_cmd="$HOST_CMD h$host2 iperf -c `host_to_ip $host1` $iperf_params -p $port |& tee ${client_log_file} > /dev/null  &"
+            eval $server_cmd
         done
     done
+
+    sleep 2
+    port=5000
+    for host1 in ${HOSTS[@]}; do
+        for host2 in ${HOSTS[@]}; do
+            if (( $host2 >= $host1 )) ; then
+                break
+            fi
+            #server_log_file="${LOG_FILE}_${host1}_from_${host2}"
+            port=$(( port + 1 ))
+            filter="" #; | cut -d\"t\" -f 2-  "
+            client_log_file="${LOG_FILE}_${host2}_to_${host1}"
+            server_log_file="${LOG_FILE}_${host1}_from_${host2}"
+            rm -f $client_log_file
+            #server_cmd="xterm $xterm_params  -e \"$HOST_CMD h$host1 iperf -s                     $iperf_params -p $port |& tee ${server_log_file}\" &"
+            #server_cmd="$HOST_CMD h$host1 iperf -s                     $iperf_params -p $port |& tee ${server_log_file} > /dev/null &"
+            #client_cmd="xterm $xterm_params  -e \"$HOST_CMD h$host2 iperf -c `host_to_ip $host1` $iperf_params -p $port |& tee ${client_log_file}\" &"
+            client_cmd="$HOST_CMD h$host2 iperf -c `host_to_ip $host1` $iperf_params -p $port |& tee ${client_log_file} > /dev/null  &"
+            while (( ($SECONDS - $START_TIME) <= $TIME )); do
+                sleep 0.1
+                is_listen=`cat $server_log_file | grep listening `
+                if [[ $is_listen != "" ]]; then
+                    break
+                fi
+
+            done
+            echo "`print_time`: $client_cmd"
+            eval $client_cmd
+        done
+    done
+
 }
 
 SUMMARY_FILE=$BASE_DIR"summary.log"
@@ -100,8 +137,8 @@ function collectResults {
     echo "**** Summary ***" > $SUMMARY_FILE
     for host1 in ${HOSTS[@]}; do
         for host2 in ${HOSTS[@]}; do
-            if (( $host1 >= $host2 )) ; then
-                continue
+            if (( $host2 >= $host1 )) ; then
+                break
             fi
             server_log_file="${LOG_FILE}_${host1}_from_${host2}"
             client_log_file="${LOG_FILE}_${host2}_to_${host1}"
@@ -118,6 +155,7 @@ function collectResults {
         done
     done
     echo "***********" >> $SUMMARY_FILE
+    sudo killall iperf > /dev/null
 
 }
 

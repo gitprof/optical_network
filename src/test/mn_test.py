@@ -45,19 +45,19 @@ GRAPHS_WITH_PATHS = [
                          # ('test3.g', [[2,1,7]]),
                        ]
 
-PATHING_ALGOS = ['MM_SRLG', 'DP']
+PATHING_ALGOS = ['DP']
 
 debug = None
 
 
-def set_figure(title, x_title, y_title, x_ticks, y_ticks):
+def set_figure(title, x_title, y_title, x_ticks, x_values, y_ticks):
     fig = plt.figure()
     #ax = fig.gca()
     #ax.set_xticks(numpy.arrange(0,10,1))
     #ax.set_yticks(numpy.arrange(0,60, 5))
 
     if x_ticks != []:
-        plt.xticks(x_ticks)
+        plt.xticks(x_ticks, x_values)
     if y_ticks != []:
         plt.yticks(y_ticks)
 
@@ -95,18 +95,30 @@ def run_mn_examples():
         #res = os.popen(cmd).read()
 
 
-def test_unit(graph_file, pathing_algo, paths, controller):
+def test_unit(graph_file,
+              pathing_algo,
+              paths,
+              controller,
+              staticArp = True,
+              Cli       = False,
+              Test      = True,
+              Monitor   = False,
+              Dump      = True,
+              Hold      = False):
+
     debug.logger("test_unit: graphfile=%s. " % (graph_file))
+
     mnInterface = MNInterface.MNInterface(opt_net_file = graph_file,
                                           pathing_algo = pathing_algo,
                                           paths        = paths)
+
     mnInterface.start_mn_session(controller = controller,
-                               staticArp = True,
-                               Cli       = False,
-                               Test      = True,
-                               Monitor   = False,
-                               Dump      = True,
-                               Hold      = False)
+                                 staticArp = staticArp,
+                                 Cli       = Cli,
+                                 Test      = Test,
+                                 Monitor   = Monitor,
+                                 Dump      = Dump,
+                                 Hold      = Hold)
 
     return mnInterface
 
@@ -128,16 +140,9 @@ def test_algo_comparison(graph_file):
     ''' Printing Summary Graphs:'''
     line_shapes = ['bs', 'ro']
     # live cons:
-
-
-    #failed_links = [1,2,3]
-    #live_cons_y = {}
-    #total_bw_y = {}
-    #total_cons = 2
-
     x_axis = range(len(failed_links))
-    enh_x_axis = range(len(failed_links)+2)
-    live_cons_fig = set_figure("Live Connections", "link fail", "# live connections", enh_x_axis, range(total_cons+3))
+    enh_x_axis = range(len(failed_links))
+    live_cons_fig = set_figure("Live Connections (Total:%s)", "link fail", "# live connections" % (total_cons), enh_x_axis, failed_links, range(total_cons+3))
     #plt.plot([1,2,3], [5,6,7])
     #plt.show()
     graph_name = os.path.split(graph_file)[1]
@@ -149,7 +154,8 @@ def test_algo_comparison(graph_file):
 
     i = 0
     # total bw:
-    total_bw_fig  = set_figure("Total BWs", "link fail", "total BW in Mbit/s",        enh_x_axis, range(0,100,10)) # TODO: y axis (BW)
+    max_bw = max(total_bw_y[algo])
+    total_bw_fig  = set_figure("Total BWs",                     "link fail", "total BW in Mbit/s",               enh_x_axis, failed_links, range(0,max_bw,20)) # TODO: y axis (BW)
     for algo in PATHING_ALGOS:
         draw_graph(x_axis, total_bw_y[algo], line_shapes[i], "Graph: %s. Algorithm: %s" % (graph_name, algo))
         i += 1
@@ -167,21 +173,31 @@ def test_graph_comparison(pathing_algo = 'MANUAL'):
               paths         = paths,
               controller    = 'RYU')
 
+def test_interactive(graph, pathing_algo, ):
+	test_unit(graph_file    = os.path.join(GRAPH_DIR, graph),
+              pathing_algo  = pathing_algo,
+              paths         = None,
+              controller    = 'RYU',
+              Cli           = True,
+              Test          = False)
+
 
 
 def run_tests():
+    g_p = GRAPHS_WITH_PATHS[0]
+
     #run_mn_examples()
     #test_graph_comparison('MM_SRLG')
     #test_graph_comparison('DP')
-
-    for g_p in GRAPHS_WITH_PATHS:
-        test_algo_comparison(os.path.join(GRAPH_DIR, g_p[0]))
+    #test_interactive(g_p[0], 'MM_SRLG')
+    test_algo_comparison(os.path.join(GRAPH_DIR, g_p[0]))
 
 
 if "__main__" == __name__:
     setLogLevel( 'info' )
     debug = register_debugger()
     run_tests()
+    raw_input("Press Enter to continue...")
     close_debugger()
 
 

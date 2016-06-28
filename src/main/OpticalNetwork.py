@@ -40,6 +40,46 @@ class OpticalNetwork:
     def destroy(self):
         close_debugger()
 
+
+    '''
+    Assuming file of format:
+    grid
+    B,<val>
+    M,<val>
+    N,<val>
+    K,<val>
+    seed,<val>
+    '''
+    def gen_grid_graph(self, M, N, K, seed):
+        num_nodes = M*N
+        skip  = seed % num_nodes
+        node_list = ['e' for e in range(num_nodes)]
+        self.logical_nodes = []
+        logical_pos = skip
+        for r_ix in range(1, K+1):
+            while 'e' != node_list[logical_pos]
+                logical_pos += 1
+            node_list[logical_pos] = r_ix
+            self.logical_nodes.append(r_ix)
+            logical_pos += skip
+        s_ix = K + 1
+        for ix in range(len(node_list)):
+            if 'e' == node_list[ix]
+                node_list[ix] = s_ix
+                s_ix += 1
+        weighted_edges = []
+        for row in range(len(M)):
+            for col in range(len(N)):
+                capacity = (seed * row + col ) % MAX_EDGE_CAPACITY
+                if row < M-1:
+                    weighted_edge = (node_list[row*N+col], node_list[(row+1)*N+col], {'capacity': capacity})
+                    weighted_edges.append(weighted_edge)
+                if col < N-1:
+                    weighted_edge = (node_list[row*N+col], node_list[row*N+col+1],   {'capacity': capacity})
+                    weighted_edges.append(weighted_edge)
+        return weighted_edges
+
+
     '''
     Assume file of format:
     B,<B_val>
@@ -51,11 +91,7 @@ class OpticalNetwork:
         router is noted by rx
         (x is number)
     '''
-    def init_graph_from_file(self, graph_file):
-        with open(graph_file, 'r') as f:
-            lines = [tuple(i[:-1].split(',')) for i in f]
-        self.B = int(lines[0][1])
-        edges_lines = lines[1:]
+    def create_custom_graph(self, edges_lines):
         counter=0
         for line in edges_lines:
             if (len(line) < 3) or (line[0] == '#') :
@@ -74,6 +110,25 @@ class OpticalNetwork:
                         self.logical_nodes.append(int(edge[i][1:]))
         self.debug.logger("init_graph_from_file: logical_nodes=%s" % self.logical_nodes)
         weighted_edges = [(int(edge[0][1:]), int(edge[1][1:]), {'capacity':input_edges[edge]}) for edge in input_edges.keys()]
+        return weighted_edges
+
+
+
+    def init_graph_from_file(self, graph_file):
+        with open(graph_file, 'r') as f:
+            lines = [tuple(i[:-1].split(',')) for i in f]
+        # we added functionality for grid generating
+        if "grid" == lines[0]:
+            self.B = int(lines[1][1])
+            M    = int(lines[2][1])
+            N    = int(lines[3][1])
+            K    = int(lines[4][1])
+            seed = int(lines[5][1])
+            weighted_edges = self.gen_grid_graph(M, N, K, seed)
+        else: # regular custom graph file
+            self.B = int(lines[0][1])
+            edges_lines = lines[1:]
+            weighted_edges = self.create_custom_graph(edges_lines)
         self.graph.add_edges_from(weighted_edges)
         self.input_graph = copy.deepcopy(self.graph)
 
@@ -319,6 +374,7 @@ class OpticalNetwork:
         #nx.draw(g)
         #plt.draw()
         plt.axis('off')
+        plt.ion()
         plt.show()
 
 

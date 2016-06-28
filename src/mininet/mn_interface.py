@@ -49,6 +49,9 @@ Handling Multi Python Processes:
 
 '''
 
+CAPACITY_TO_MBITS = 10
+MAX_MBITS = 500
+
 
 class TopoFormat(Topo):
 
@@ -80,8 +83,6 @@ class TopoFormat(Topo):
         for node in optNet.nodes():
             switches[node] = self.addSwitch('s%d' % node, mac = "")
 
-        CAPACITY_TO_MBITS = 5
-        MAX_MBITS = 50
 
         # link hosts to switches
         for node in optNet.get_logical_nodes():
@@ -100,6 +101,7 @@ class TopoFormat(Topo):
 PICKLES_JAR=os.path.join(BASE_DIR, "src", "mininet", "pickles")
 PICKLED_GRAPH=os.path.join(PICKLES_JAR, "graph")
 PICKLED_LOGICAL_PATHS=os.path.join(PICKLES_JAR, "logical_paths")
+PICKLED_HOSTS=os.path.join(PICKLES_JAR, "hosts")
 
 
 RUNNING_OPT_NET = None
@@ -148,11 +150,15 @@ class MNInterface(object):
         topoFormat.set_topo(RUNNING_OPT_NET, init_ip, init_mac)
         return topoFormat
 
-    def serialize_opt_net(self, graph_file, logical_paths):
-        with open(PICKLED_GRAPH, 'wb') as f:
+    def serialize_opt_net(self, graph_file, logical_paths, hosts):
+        self.debug.logger("serialize_opt_net: hosts=%s" % (hosts))
+        with open(PICKLED_GRAPH,         'wb') as f:
             pk.dump(graph_file, f)
         with open(PICKLED_LOGICAL_PATHS, 'wb') as f:
             pk.dump(logical_paths, f)
+        with open(PICKLED_HOSTS,         'wb') as f:
+            pk.dump(hosts, f)
+
 
     # these 2 methods probaby deprecated, we will use serialization
     def get_running_opt_net(self):
@@ -186,7 +192,9 @@ class MNInterface(object):
             self.debug.assrt(False, "set_running_opt_net: Unkown pathing algorithm!")
         self.running_opt_net = RUNNING_OPT_NET
         logical_paths = self.running_opt_net.l_net.get_paths()
-        self.serialize_opt_net(graph_file, logical_paths)
+        #hosts = [host[1:] for host in self._topo.hosts()]
+        hosts = self.running_opt_net.get_logical_nodes()
+        self.serialize_opt_net(graph_file, logical_paths, hosts)
 
     def verify(self):
         self.debug.assrt(self.net != None, "MNInterface: attempt to use uninitialized mn!")
@@ -251,7 +259,7 @@ class MNInterface(object):
 
         self.controller_logfile = CONTROLLER_LOG_FILE
         dont_show="PacketIn"
-        cmd="sudo xterm -geometry 200x50+10+10  -e \"%s |& egrep -v PacketIn  |& tee  %s  \"  &" % (start_controller_cmd, self.controller_logfile)
+        cmd="sudo xterm -geometry 200x50+10+10  -e \"%s |& egrep -v PacketIn  |& tee  %s |& grep OOO  \"  &" % (start_controller_cmd, self.controller_logfile)
         #cmd="sudo %s  &" % (start_controller_cmd)
 
         self.debug.logger(cmd)
@@ -310,11 +318,15 @@ class MNInterface(object):
         self.net.iperf(hosts = hosts, l4Type = 'TCP')
 
     def run_link_failure_test(self, sw_id1, sw_id2):
+        hosts = self.running_opt_net.get_logical_nodes()
+        if (-1 == sw_id1):
+            perf_results = ProcessIperfRes.run_test(hosts)
+            print("run_link_failure_test: perf_results=%s " % (perf_results))
+            return perf_results
         cmd = "link %s %s down" % (sw_id1, sw_id2)
         self.debug.logger(cmd)
         self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'down')
         time.sleep(1)
-        hosts = self.running_opt_net.get_logical_nodes()
         perf_results = ProcessIperfRes.run_test(hosts)
         cmd = "link %s %s up" % (sw_id1, sw_id2)
         self.debug.logger(cmd)
@@ -325,7 +337,8 @@ class MNInterface(object):
 
     def resillience_test(self):
         self.link_to_perf_results = {}
-        for sw_id1, sw_id2 in self.running_opt_net.physical_links():
+        link_list = self.running_opt_net.physical_links().keys() + [(-1,-1)]
+        for sw_id1, sw_id2 in link_list:
             link = (sw_id1, sw_id2)
             self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
             self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
@@ -341,6 +354,8 @@ class MNInterface(object):
     def close_controller(self):
         os.popen("sudo killall -9 xterm > /dev/null") # TODO: kill by PID
         self.debug.logger('controller log file at %s' % (self.controller_logfile))
+
+
 
     def start_mn_session(self, controller = None,
                                staticArp = False,
@@ -386,6 +401,9 @@ class MNInterface(object):
                 self.debug.logger(cmd)
                 os.system(cmd)
 
+        if Dump:
+	    RUNNING_OPT_NET.draw()
+
         time.sleep(int(RESTIME/2))
 
         if Cli:
@@ -401,7 +419,6 @@ class MNInterface(object):
 
         if Dump:
             self.dump_net_data(_print = True)
-	        #RUNNING_OPT_NET.draw()
 
         if Hold:
             raw_input("Press Enter to finish...")
