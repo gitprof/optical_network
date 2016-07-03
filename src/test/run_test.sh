@@ -155,14 +155,14 @@ function collectResults {
         done
     done
     echo "***********" >> $SUMMARY_FILE
-    sudo killall iperf > /dev/null
+    sudo killall iperf >& /dev/null
 
 }
 
 function test2 {
     runAll2AllIPerf
     sleep $TIME
-    sudo killall -9 iperf
+    sudo killall iperf >& /dev/null
     collectResults
     cat $SUMMARY_FILE
 

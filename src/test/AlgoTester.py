@@ -84,9 +84,14 @@ def gen_test(test_num, graph, algo, fail_link, paths = None):
     debug.logger('\nOOO  graph: %s. algo: %s. failing link: %s.' % (graph, algo, fail_link))
     #logical_paths = [[1,4,2],[1,3,2]]
     optNet = get_opt_net(graph)
+    optNet.draw()
+    #raw_input("Press any key...")
     if   'MM_SRLG' == algo:
         algo = MM_SRLG.MM_SRLG_solver()
         algo.solve(optNet)
+    elif 'MM_SRLG_VAR' == algo:
+        algo = MM_SRLG.MM_SRLG_solver()
+        algo.solve(optNet, True)
     elif 'DP'      == algo:
         algo = DP.DP()
         algo.solve(optNet)
@@ -97,7 +102,7 @@ def gen_test(test_num, graph, algo, fail_link, paths = None):
         optNet.l_net = logNet
     else:
         assert False, "gen_test: Unkwon algo!"
-    debug.logger("gen_test: logical_paths=%s" % (optNet.get_logical_network().get_paths()))
+    #debug.logger("gen_test: logical_paths=%s" % (optNet.get_logical_network().get_paths()))
     optNet.l_net.update()
     optNet.create_logical_graph()
     routing_paths = optNet.set_routing_paths()
@@ -110,6 +115,7 @@ def gen_test(test_num, graph, algo, fail_link, paths = None):
 
 
 def test_link_failures(graph, algo):
+    debug.logger("test_link_failure: graph=%s. algo=%s" % (graph, algo))
     optNet = get_opt_net(graph)
     test_num = 0
     for physical_link in optNet.physical_links():
@@ -124,9 +130,14 @@ def algo_tester_main():
     debug.logger('\n***** AlgoTester *****')
     #test_link_failures('test1.g', 'MM_SRLG')
     #gen_test(1, 'tmp.g', 'MANUAL', (2,4), paths = [[2,4,1]])
-    gen_test(1, 'test8.g', 'DP', (13,15), paths = None)
-
-    gen_test(1, 'test8.g', 'MM_SRLG', (13,15), paths = None)
+    #gen_test(1, 'test8.g', 'DP', (13,15), paths = None)
+    for g_p in GRAPHS_WITH_PATHS:
+        #gen_test(1, g_p[0], 'MM_SRLG_VAR', (1,5), paths = None)
+        test_link_failures(g_p[0], 'MM_SRLG')
+        test_link_failures(g_p[0], 'MM_SRLG_VAR')
+        test_link_failures(g_p[0], 'DP')
+        #gen_test(1, g_p[0], 'MM_SRLG', (1,5), paths = None)
+        #gen_test(1, g_p[0], 'DP', (1,5), paths = None)
     #gen_test(1, 'star.g', 'MANUAL', (1,5), paths = [[1,5,6,3],[3,6,5,2],[2,5,6,4]])
     #test_link_failures('test1.g', 'DP')
 

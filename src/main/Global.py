@@ -38,6 +38,20 @@ Debug = imp.load_source('Debug', os.path.join(MAIN_DIR, 'utilities', 'Debug.py')
 ''' Scratchpad '''
 
 
+PATHING_ALGOS = ['MM_SRLG', 'MM_SRLG_VAR', 'DP']
+
+GRAPHS_WITH_PATHS = [
+                         #  ('2paths.g', [[1,3,2],[1,4,2]]),
+                         # ('test8.g', [[1,4,3], [2,5,7,6,4,1], [3,4,5,2]]),
+                          ('test9.g', []),
+                         # ('star.g', [[1,5,6,3],[3,6,5,2],[2,5,6,4]]),
+                         # ('tree.g', [[2,4,1]]),
+                         # ('tmp.g', [[1,4,2], [3,4,2], [1,4,3]]),
+                         # ('test2.g', [[1,3,2]]),
+                         # ('test3.g', [[2,1,7]]),
+                       ]
+
+
 
 global_debug = None
 def register_debugger(master = False):

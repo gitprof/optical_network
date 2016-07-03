@@ -338,10 +338,14 @@ class MNInterface(object):
     def resillience_test(self):
         self.link_to_perf_results = {}
         link_list = self.running_opt_net.physical_links().keys() + [(-1,-1)]
+        debug_counter = 0
         for sw_id1, sw_id2 in link_list:
             link = (sw_id1, sw_id2)
             self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
             self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
+            #debug_counter += 1
+            if debug_counter == 3:
+                break
         print("resillience_test: link_to_perf_res=%s " % (self.link_to_perf_results))
 
     def get_last_test_results(self):

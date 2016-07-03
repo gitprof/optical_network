@@ -34,6 +34,7 @@ class OpticalNetwork:
         #self.l_net = Set()
         self.debug = register_debugger(master = master)
         self.logical_nodes = []
+        self.node_positions = None
         self.input_graph = None
 
 
@@ -52,31 +53,38 @@ class OpticalNetwork:
     '''
     def gen_grid_graph(self, M, N, K, seed):
         num_nodes = M*N
-        skip  = seed % num_nodes
+        skip  = seed * 17
         node_list = ['e' for e in range(num_nodes)]
         self.logical_nodes = []
         logical_pos = skip
+        converging_step = (seed / 3) + 1
         for r_ix in range(1, K+1):
-            while 'e' != node_list[logical_pos]
-                logical_pos += 1
-            node_list[logical_pos] = r_ix
+            while 'e' != node_list[logical_pos % num_nodes]:
+                logical_pos += converging_step
+                converging_step -= 1 if (converging_step != 1) else 0
+            converging_step = (seed / 3) + 1
+            node_list[logical_pos % num_nodes] = r_ix
             self.logical_nodes.append(r_ix)
             logical_pos += skip
+            skip += seed * 3
         s_ix = K + 1
         for ix in range(len(node_list)):
-            if 'e' == node_list[ix]
+            if 'e' == node_list[ix]:
                 node_list[ix] = s_ix
                 s_ix += 1
         weighted_edges = []
-        for row in range(len(M)):
-            for col in range(len(N)):
-                capacity = (seed * row + col ) % MAX_EDGE_CAPACITY
+        self.node_positions = {}
+        for row in range(M):
+            for col in range(N):
+                self.node_positions[node_list[row*N+col]] = [row, col]
+                capacity = (((seed * row + col ) * 2 ) % MAX_EDGE_CAPACITY) + 2
                 if row < M-1:
                     weighted_edge = (node_list[row*N+col], node_list[(row+1)*N+col], {'capacity': capacity})
                     weighted_edges.append(weighted_edge)
                 if col < N-1:
                     weighted_edge = (node_list[row*N+col], node_list[row*N+col+1],   {'capacity': capacity})
                     weighted_edges.append(weighted_edge)
+        #print('weighted_edges: %s' % (weighted_edges))
         return weighted_edges
 
 
@@ -118,7 +126,7 @@ class OpticalNetwork:
         with open(graph_file, 'r') as f:
             lines = [tuple(i[:-1].split(',')) for i in f]
         # we added functionality for grid generating
-        if "grid" == lines[0]:
+        if "grid" == lines[0][0]:
             self.B = int(lines[1][1])
             M    = int(lines[2][1])
             N    = int(lines[3][1])
@@ -130,6 +138,8 @@ class OpticalNetwork:
             edges_lines = lines[1:]
             weighted_edges = self.create_custom_graph(edges_lines)
         self.graph.add_edges_from(weighted_edges)
+        #self.draw()
+
         self.input_graph = copy.deepcopy(self.graph)
 
     '''
@@ -143,6 +153,7 @@ class OpticalNetwork:
                     continue
                 pairs.append((r1,r2))
         self.debug.logger("get_logical_pairs: %s" % (pairs))
+        print("OOO get_logical_pairs: %s" % (pairs))
         return pairs
 
     def get_links_from_path(self, path):
@@ -279,8 +290,11 @@ class OpticalNetwork:
         new_copy               = OpticalNetwork()
         new_copy.B             = copy.deepcopy(self.B)
         new_copy.graph         = copy.deepcopy(self.graph)
+        new_copy.input_graph   = copy.deepcopy(self.input_graph)
         new_copy.logical_nodes = copy.deepcopy(self.logical_nodes)
+        new_copy.node_positions = copy.deepcopy(self.node_positions)
         new_copy.debug         = self.debug
+        print(type(new_copy))
         return new_copy
 
 
@@ -332,7 +346,7 @@ class OpticalNetwork:
         return self.graph.degree(node)
 
     def node_neighbors(self, node):
-        return sorted(graph.neighbors(node))
+        return sorted(self.graph.neighbors(node))
 
     def get_plink_capacity(self, edge):
         return self.graph[edge[0]][edge[1]]['capacity']
@@ -350,7 +364,8 @@ class OpticalNetwork:
 
     def draw(self):
         g = self.graph
-        pos = nx.spring_layout(self.graph,scale=2)
+        pos = self.node_positions if self.node_positions != None else nx.spring_layout(self.graph,scale=2)
+
 	node_colors = []
 	for node in g.nodes():
 	    if self.is_logical_node(node):
@@ -359,6 +374,7 @@ class OpticalNetwork:
 	        node_colors.append('r')
 
         nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, node_size=500, alpha=0.8)
+        #nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, node_size=500, alpha=0.8)
         nx.draw_networkx_edges(g, pos, edgelist=g.edges(), edge_color=[( (float(g[u][v]['capacity'])*0.01)+10000 ) for (u,v) in g.edges()], edge_vmin=100, edge_vmax=1000, width=5, alpha=0.8)
         #nx.draw(self.graph,pos,font_size=8)
         #nxd.draw(self.graph)
@@ -432,7 +448,7 @@ class LogicalNetwork:
                 else:
                     self.traversing_paths[link] = [path]
                     self.links[link] = 1
-        self.debug.logger("init_from_paths: links=%s. paths=%s" % (self.links, self.paths))
+        #self.debug.logger("init_from_paths: links=%s. paths=%s" % (self.links, self.paths))
         return self
 
     # update all data according to paths

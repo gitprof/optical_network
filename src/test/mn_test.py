@@ -35,17 +35,6 @@ EXAMPLE_TESTS = [
 			'test_clusterSanity.py'
 		]
 
-GRAPHS_WITH_PATHS = [
-                         #  ('2paths.g', [[1,3,2],[1,4,2]]),
-                          ('test8.g', [[1,4,3], [2,5,7,6,4,1], [3,4,5,2]]),
-                         # ('star.g', [[1,5,6,3],[3,6,5,2],[2,5,6,4]]),
-                         # ('tree.g', [[2,4,1]]),
-                         # ('tmp.g', [[1,4,2], [3,4,2], [1,4,3]]),
-                         # ('test2.g', [[1,3,2]]),
-                         # ('test3.g', [[2,1,7]]),
-                       ]
-
-PATHING_ALGOS = ['DP']
 
 debug = None
 
@@ -122,7 +111,7 @@ def test_unit(graph_file,
 
     return mnInterface
 
-def test_algo_comparison(graph_file):
+def test_algo_comparison(graph_file, draw_graphs = True):
     total_bw_y = {}
     live_cons_y = {}
     for algo in PATHING_ALGOS:
@@ -137,31 +126,78 @@ def test_algo_comparison(graph_file):
         total_bw_y[algo]  = [link_to_perf_results[link]['TOTAL'][0] for link in failed_links]
         live_cons_y[algo] = [link_to_perf_results[link]['TOTAL'][1] for link in failed_links]
 
+    if draw_graphs:
+        ''' Printing Summary Graphs:'''
+
+        line_shapes = ['bs', 'ro']
+
+        # live cons:
+        x_axis = range(len(failed_links))
+        live_cons_fig = set_figure("Live Connections (Total:%s)" % (total_cons), "link fail", "# live connections", x_axis, failed_links, range(total_cons+3))
+        graph_name = os.path.split(graph_file)[1]
+        i = 0
+        for algo in PATHING_ALGOS:
+            draw_graph(x_axis, live_cons_y[algo], line_shapes[i], "Graph: %s. Algorithm: %s" % (graph_name, algo))
+            i += 1
+        show_graph()
+
+        i = 0
+        # total bw:
+        max_bw = 0
+        for algo in PATHING_ALGOS:
+            max_bw = max(int(max(total_bw_y[algo])), max_bw)
+
+        total_bw_fig  = set_figure("Total BWs",                     "link fail", "total BW in Mbit/s",              x_axis, failed_links, range(0,max_bw,20)) # TODO: y axis (BW)
+        for algo in PATHING_ALGOS:
+            draw_graph(x_axis, total_bw_y[algo], line_shapes[i], "Graph: %s. Algorithm: %s" % (graph_name, algo))
+            i += 1
+        show_graph()
+
+    algo_to_results = {}
+    for algo in PATHING_ALGOS:
+        algo_to_results[algo] = {}
+        algo_to_graph_results[algo]['TOTAL_BW']   = sum(total_bw_y[algo])
+        algo_to_graph_results[algo]['TOTAL_CONS'] = sum(live_cons_y[algo])
+
+    return algo_to_results
+    raw_input("Press Enter to finish...")
+
+
+def test_full_regression():
+    graph_names = []
+    for g_p in GRAPHS_WITH_PATHS:
+        graph_names.append(g_p[0])
+        algo_to_graph_results = test_algo_comparison(g_p[0], False)
+        for algo in PATHING_ALGOS:
+            algo_to_bw[algo].append(algo_to_graph_results[algo]['TOTAL_BW'])
+            algo_to_cons[algo].append(algo_to_graph_results[algo]['TOTAL_CONS'])
+
     ''' Printing Summary Graphs:'''
+
     line_shapes = ['bs', 'ro']
     # live cons:
-    x_axis = range(len(failed_links))
-    enh_x_axis = range(len(failed_links))
-    live_cons_fig = set_figure("Live Connections (Total:%s)", "link fail", "# live connections" % (total_cons), enh_x_axis, failed_links, range(total_cons+3))
-    #plt.plot([1,2,3], [5,6,7])
-    #plt.show()
+    x_axis = range(len(GRAPHS_WITH_PATHS))
+    live_cons_fig = set_figure("Live Connections (Total:%s)" % (total_cons), "graph", "# live connections", x_axis, graph_names, range(total_cons+3))
     graph_name = os.path.split(graph_file)[1]
     i = 0
     for algo in PATHING_ALGOS:
-        draw_graph(x_axis, live_cons_y[algo], line_shapes[i], "Graph: %s. Algorithm: %s" % (graph_name, algo))
+        draw_graph(x_axis, algo_to_cons[algo], line_shapes[i], "Algorithm: %s" % (algo))
         i += 1
     show_graph()
 
     i = 0
     # total bw:
-    max_bw = max(total_bw_y[algo])
-    total_bw_fig  = set_figure("Total BWs",                     "link fail", "total BW in Mbit/s",               enh_x_axis, failed_links, range(0,max_bw,20)) # TODO: y axis (BW)
+    max_bw = 0
     for algo in PATHING_ALGOS:
-        draw_graph(x_axis, total_bw_y[algo], line_shapes[i], "Graph: %s. Algorithm: %s" % (graph_name, algo))
+        max_bw = max(int(max(total_bw_y[algo])), max_bw)
+
+    total_bw_fig  = set_figure("Total BWs",                     "graph", "total BW in Mbit/s",               x_axis, graph_names, range(0,max_bw,100)) # TODO: y axis (BW)
+    for algo in PATHING_ALGOS:
+        draw_graph(x_axis, algo_to_bw[algo], line_shapes[i], "Algorithm: %s" % (algo))
         i += 1
     show_graph()
 
-    raw_input("Press Enter to finish...")
+
 
 
 def test_graph_comparison(pathing_algo = 'MANUAL'):
