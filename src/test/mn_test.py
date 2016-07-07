@@ -97,7 +97,7 @@ def test_unit(graph_file,
               StaticArp = True,
               Cli       = False,
               Monitor   = False,
-              Dump      = False,
+              Dump      = True,
               Hold      = False):
 
     debug.logger("test_unit: graphfile=%s. algorithm=%s." % (graph_file, pathing_algo))
@@ -229,9 +229,6 @@ def test_full_regression():
         draw_graph(x_axis, algo_to_bw[algo], line_shapes[i], "Algorithm: %s" % (algo))
         i += 1
     show_graph()
-
-
-
 
 def test_graph_comparison(pathing_algo = 'MANUAL'):
     for g_p in GRAPHS_WITH_PATHS:

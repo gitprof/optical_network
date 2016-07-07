@@ -44,7 +44,7 @@ class OpticalNetwork:
 
     '''
     Assuming file of format:
-    grid
+    grid,YES
     B,<val>
     M,<val>
     N,<val>

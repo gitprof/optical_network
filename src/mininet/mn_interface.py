@@ -51,7 +51,7 @@ Handling Multi Python Processes:
 '''
 
 CAPACITY_TO_MBITS = 10
-MAX_MBITS = 500
+MAX_MBITS = OptNet.MAX_EDGE_CAPACITY * CAPACITY_TO_MBITS
 
 
 class TopoFormat(Topo):
@@ -87,7 +87,7 @@ class TopoFormat(Topo):
 
         # link hosts to switches
         for node in optNet.get_logical_nodes():
-            _bw = MAX_MBITS
+            _bw = 2 * MAX_MBITS
             intf = custom( TCIntf, bw=_bw )
             self.addLink(switches[node], hosts[node], intf=intf )
 
