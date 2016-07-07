@@ -335,11 +335,14 @@ class MNInterface(object):
         print("run_link_failure_test: perf_results=%s " % (perf_results))
         return perf_results
 
-    def resillience_test(self):
+    def resillience_test(self, links_to_fail):
+        self.debug.logger("resillience_test:")
         self.link_to_perf_results = {}
-        link_list = self.running_opt_net.physical_links().keys() + [(-1,-1)]
+        if links_to_fail == None:
+            links_to_fail = self.running_opt_net.physical_links().keys()
+        links_to_fail += [(-1,-1)]
         debug_counter = 0
-        for sw_id1, sw_id2 in link_list:
+        for sw_id1, sw_id2 in links_to_fail:
             link = (sw_id1, sw_id2)
             self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
             self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
@@ -347,6 +350,7 @@ class MNInterface(object):
             if debug_counter == 3:
                 break
         print("resillience_test: link_to_perf_res=%s " % (self.link_to_perf_results))
+        return self.link_to_perf_results
 
     def get_last_test_results(self):
         return self.link_to_perf_results
@@ -359,22 +363,32 @@ class MNInterface(object):
         os.popen("sudo killall -9 xterm > /dev/null") # TODO: kill by PID
         self.debug.logger('controller log file at %s' % (self.controller_logfile))
 
+    def exe_cli(self):
+	    CLI( self.net )
+
+    def end_mn_session(self):
+        if self.net != None:
+            self.net.stop()
+
+        if self.ctrlr_type != None:
+            self.close_controller()
+
 
 
     def start_mn_session(self, controller = None,
                                staticArp = False,
                                Cli  = False,
-                               Test = True,
+                               SanityTest = True,
                                Monitor = True,
                                Dump = True,
                                Hold = False,
-                               simpleMac = True):
+                               SimpleMac = True):
 
         self.set_simple_mac = simpleMac
         self.ctrlr_type = controller
         self.clean_up()
         if controller != None:
-	    self.set_controller_params()
+            self.set_controller_params()
 
 
         self._topo = self.optical_network_to_mn_topo()
@@ -383,7 +397,7 @@ class MNInterface(object):
 
 
         if controller != None:
-	    self.start_controller()
+            self.start_controller()
 
 
         self.net.start()
@@ -406,20 +420,17 @@ class MNInterface(object):
                 os.system(cmd)
 
         if Dump:
-	    RUNNING_OPT_NET.draw()
+            RUNNING_OPT_NET.draw()
 
         time.sleep(int(RESTIME/2))
 
         if Cli:
-	    CLI( self.net )
+            self.exe_cli()
 
-        if Test:
-            self.resillience_test()
-            #self.test_ping()
+
+        if SanityTest:
+            self.test_ping()
             #self.test_iperf()
-            ''' Iperf Command:
-                iperf -c <server> -t <time> -i <print_interval> -P <num_processes> -d <bidirectional>
-            '''
 
         if Dump:
             self.dump_net_data(_print = True)
@@ -428,10 +439,6 @@ class MNInterface(object):
             raw_input("Press Enter to finish...")
         #time.sleep(RESTIME*2)
 
-        self.net.stop()
-
-        if controller != None:
-            self.close_controller()
 
 
     def dpid_to_optnetid(self, dpid):

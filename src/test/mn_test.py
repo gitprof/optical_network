@@ -83,44 +83,72 @@ def run_mn_examples():
         os.system(cmd)
         #res = os.popen(cmd).read()
 
+TEST_PINGALL
+TEST_IPERF_ALL2ALL
+TEST_RESSILIENCE
 
 def test_unit(graph_file,
               pathing_algo,
-              paths,
-              controller,
+              pathing_algo_params = {},
+              test      = None,
+              test_params = {},
+              controller = None,
               staticArp = True,
               Cli       = False,
-              Test      = True,
               Monitor   = False,
               Dump      = True,
               Hold      = False):
 
-    debug.logger("test_unit: graphfile=%s. " % (graph_file))
+    debug.logger("test_unit: graphfile=%s. algorithm=%s." % (graph_file, pathing_algo))
+    graph_file_full_path = os.path.join(GRAPH_DIR, g_p[0])
 
-    mnInterface = MNInterface.MNInterface(opt_net_file = graph_file,
+    mnInterface = MNInterface.MNInterface(opt_net_file = graph_file_full_path,
                                           pathing_algo = pathing_algo,
-                                          paths        = paths)
+                                          pathing_algo_params = pathing_algo_params)
 
     mnInterface.start_mn_session(controller = controller,
-                                 staticArp = staticArp,
+                                 StaticArp = StaticArp,
                                  Cli       = Cli,
-                                 Test      = Test,
+                                 SanityTest = False,
                                  Monitor   = Monitor,
                                  Dump      = Dump,
                                  Hold      = Hold)
 
-    return mnInterface
+    test_results = None
+    if TEST_RESSILIENCE == test:
+        links_to_fail = test_params['links_to_fail']
+        test_results = mnInterface.test_ressilience(links_to_fail)
+    elif TEST_PINGALL == test:
+        mnInterface.test_ping()
+    elif TEST_IPERF_ALL2ALL == test:
+        mnInterface.test_iperf()
+
+    return test_results
+
+MAX_LINKS_TO_FAIL = 12
+
+def links_to_fail_from_graph(graph):
+    graph_file_full_path = os.path.join(GRAPH_DIR, graph)
+    opt_net = OptNet.OpticalNetwork()
+    opt_net.init_graph_from_file(graph_file_full_path)
+    links = opt_net.physical_links().keys()
+    num_links = min(MAX_LINKS_TO_FAIL, len(links))
+    links_to_fail = random.sample(links, num_links)
+    return links_to_fail
+
 
 def test_algo_comparison(graph_file, draw_graphs = True):
     total_bw_y = {}
     live_cons_y = {}
+    links_to_fail = links_to_fail_from_graph(graph_file)
     for algo in PATHING_ALGOS:
-        mnInterface =  test_unit(graph_file   = graph_file,
-                                pathing_algo = algo,
-                                paths        = None,
-                                controller   = 'RYU')
+        link_to_perf_results = test_unit(graph_file   = graph_file,
+                                        pathing_algo = algo,
+                                        pathing_algo_params = {'links_to_fail':links_to_fail},
+                                        test = TEST_RESSILIENCE,
+                                        test_params = {'links_to_fail':links_to_fail},
+                                        controller   = 'RYU')
 
-        link_to_perf_results = mnInterface.get_last_test_results()
         total_cons        = link_to_perf_results['TOTAL_CONS']
         failed_links      = [link for link in link_to_perf_results.keys() if (link != 'TOTAL_CONS')]
         total_bw_y[algo]  = [link_to_perf_results[link]['TOTAL'][0] for link in failed_links]
@@ -204,15 +232,15 @@ def test_graph_comparison(pathing_algo = 'MANUAL'):
     for g_p in GRAPHS_WITH_PATHS:
         paths = g_p[1] if pathing_algo == 'MANUAL' else None
 
-	test_unit(graph_file    = os.path.join(GRAPH_DIR, g_p[0]),
+	test_unit(graph_file    = g_p[0],
               pathing_algo  = pathing_algo,
-              paths         = paths,
+              pathing_algo_params = {'paths':paths},
               controller    = 'RYU')
 
 def test_interactive(graph, pathing_algo, ):
-	test_unit(graph_file    = os.path.join(GRAPH_DIR, graph),
+	test_unit(graph_file    = graph,
               pathing_algo  = pathing_algo,
-              paths         = None,
+              pathing_algo_params = {},
               controller    = 'RYU',
               Cli           = True,
               Test          = False)
@@ -226,7 +254,7 @@ def run_tests():
     #test_graph_comparison('MM_SRLG')
     #test_graph_comparison('DP')
     #test_interactive(g_p[0], 'MM_SRLG')
-    test_algo_comparison(os.path.join(GRAPH_DIR, g_p[0]))
+    test_algo_comparison(g_p[0])
 
 
 if "__main__" == __name__:
