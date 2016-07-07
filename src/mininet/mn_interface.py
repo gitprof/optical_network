@@ -3,6 +3,7 @@ import pickle as pk
 import subprocess
 import imp
 import os
+import copy
 import time
 import sys
 from mininet.topo import Topo
@@ -129,13 +130,13 @@ RESTIME = 5
 class MNInterface(object):
     def __init__(self, opt_net_file = DEFAULT_RUNNING_GRAPH_FILE,
                        pathing_algo = 'MANUAL',
-                       paths = None):
+                       pathing_algo_params = {}):
         global RUNNING_INTERFACE
         self.debug = register_debugger()
         self.net = None
         self.host_to_ip = {}
         self.ctrlr_params = None
-        self.set_running_opt_net(opt_net_file, pathing_algo, paths)
+        self.set_running_opt_net(opt_net_file, pathing_algo, pathing_algo_params)
         RUNNING_INTERFACE = self
 
     def use_dhclient_controller(self):
@@ -152,6 +153,8 @@ class MNInterface(object):
 
     def serialize_opt_net(self, graph_file, logical_paths, hosts):
         self.debug.logger("serialize_opt_net: hosts=%s" % (hosts))
+        if not os.path.exists(PICKLES_JAR):
+            os.mkdir(PICKLES_JAR)
         with open(PICKLED_GRAPH,         'wb') as f:
             pk.dump(graph_file, f)
         with open(PICKLED_LOGICAL_PATHS, 'wb') as f:
@@ -165,26 +168,31 @@ class MNInterface(object):
         global RUNNING_OPT_NET
 
         if None == RUNNING_OPT_NET:
-            self.set_running_opt_net()
+            assert False, "get_running_opt_net: No running opt net!"
+            #self.set_running_opt_net()
         self.debug.logger("get_running_opt_net: physical_opt_net=%s" % (RUNNING_OPT_NET.physical_links()))
         self.debug.logger("get_running_opt_net: logical_net=%s" % (RUNNING_OPT_NET.get_logical_network().get_paths()))
         return RUNNING_OPT_NET
 
 
-    def set_running_opt_net(self, graph_file, pathing_algo, paths = None):
+    def set_running_opt_net(self, graph_file, pathing_algo, pathing_algo_params):
         global RUNNING_OPT_NET
-        self.debug.assrt((pathing_algo == 'MANUAL') != (paths == None), "set_running_opt_net: conflicts pathing_algo and paths!" )
+        #self.debug.assrt((pathing_algo == 'MANUAL') != (paths == None), "set_running_opt_net: conflicts pathing_algo and paths!" )
         RUNNING_OPT_NET = OptNet.OpticalNetwork()
         RUNNING_OPT_NET.init_graph_from_file(graph_file)
         logical_paths = []
         if 'MANUAL'  == pathing_algo:   # this is for testing purposes
             #mmSrlg = MmSrlg.MM_SRLG_solver()                 # TODO: this is debug
             #logical_paths = mmSrlg.solve(RUNNING_OPT_NET)  # this is just for debugging, need to remove
+            paths = pathing_algo_params['paths']
             logical_paths = paths
             RUNNING_OPT_NET.l_net.init_from_paths(logical_paths)
         elif 'MM_SRLG' == pathing_algo:
             algo = MmSrlg.MM_SRLG_solver()
             algo.solve(RUNNING_OPT_NET)
+        elif 'MM_SRLG_VAR' == pathing_algo:
+            algo = MmSrlg.MM_SRLG_solver()
+            algo.solve(RUNNING_OPT_NET, optimized = True)
         elif 'DP'      == pathing_algo:
             algo = DP.DP()
             algo.solve(RUNNING_OPT_NET)
@@ -319,37 +327,32 @@ class MNInterface(object):
 
     def run_link_failure_test(self, sw_id1, sw_id2):
         hosts = self.running_opt_net.get_logical_nodes()
-        if (-1 == sw_id1):
-            perf_results = ProcessIperfRes.run_test(hosts)
-            print("run_link_failure_test: perf_results=%s " % (perf_results))
-            return perf_results
         cmd = "link %s %s down" % (sw_id1, sw_id2)
         self.debug.logger(cmd)
-        self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'down')
+        if (-1 != sw_id1):
+            self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'down')
         time.sleep(1)
         perf_results = ProcessIperfRes.run_test(hosts)
         cmd = "link %s %s up" % (sw_id1, sw_id2)
         self.debug.logger(cmd)
-        self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'up')
+        if (-1 != sw_id1):
+            self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'up')
         time.sleep(1)
         print("run_link_failure_test: perf_results=%s " % (perf_results))
         return perf_results
 
-    def resillience_test(self, links_to_fail):
-        self.debug.logger("resillience_test:")
+    def test_resillience(self, links_to_fail = None):
+        self.debug.logger("test_resillience: links_to_fail=%s" % (links_to_fail))
         self.link_to_perf_results = {}
         if links_to_fail == None:
             links_to_fail = self.running_opt_net.physical_links().keys()
-        links_to_fail += [(-1,-1)]
-        debug_counter = 0
-        for sw_id1, sw_id2 in links_to_fail:
+        local_links_to_fail = copy.deepcopy(links_to_fail) + [(-1,-1)]
+        for (sw_id1, sw_id2) in local_links_to_fail:
             link = (sw_id1, sw_id2)
             self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
             self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
             #debug_counter += 1
-            if debug_counter == 3:
-                break
-        print("resillience_test: link_to_perf_res=%s " % (self.link_to_perf_results))
+        print("test_resillience: link_to_perf_res=%s " % (self.link_to_perf_results))
         return self.link_to_perf_results
 
     def get_last_test_results(self):
@@ -373,10 +376,8 @@ class MNInterface(object):
         if self.ctrlr_type != None:
             self.close_controller()
 
-
-
     def start_mn_session(self, controller = None,
-                               staticArp = False,
+                               StaticArp = False,
                                Cli  = False,
                                SanityTest = True,
                                Monitor = True,
@@ -384,7 +385,7 @@ class MNInterface(object):
                                Hold = False,
                                SimpleMac = True):
 
-        self.set_simple_mac = simpleMac
+        self.set_simple_mac = SimpleMac
         self.ctrlr_type = controller
         self.clean_up()
         if controller != None:
@@ -393,7 +394,7 @@ class MNInterface(object):
 
         self._topo = self.optical_network_to_mn_topo()
         self.net = Mininet( topo=self._topo,  # TODO: run with --mac
-                    build=False, autoStaticArp = staticArp)
+                    build=False, autoStaticArp = StaticArp)
 
 
         if controller != None:
@@ -403,7 +404,7 @@ class MNInterface(object):
         self.net.start()
     	time.sleep(int(RESTIME/2))
 
-        if staticArp == True:
+        if StaticArp == True:
             DONOTHING = 0
             #self.set_dns_in_arp_tables()
 

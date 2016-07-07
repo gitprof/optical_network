@@ -1,6 +1,7 @@
 
 
 import imp
+import random
 import os
 import sys
 from mininet.topo import Topo
@@ -83,9 +84,9 @@ def run_mn_examples():
         os.system(cmd)
         #res = os.popen(cmd).read()
 
-TEST_PINGALL
-TEST_IPERF_ALL2ALL
-TEST_RESSILIENCE
+TEST_PINGALL       = 1
+TEST_IPERF_ALL2ALL = 2
+TEST_RESSILIENCE   = 3
 
 def test_unit(graph_file,
               pathing_algo,
@@ -93,14 +94,14 @@ def test_unit(graph_file,
               test      = None,
               test_params = {},
               controller = None,
-              staticArp = True,
+              StaticArp = True,
               Cli       = False,
               Monitor   = False,
-              Dump      = True,
+              Dump      = False,
               Hold      = False):
 
     debug.logger("test_unit: graphfile=%s. algorithm=%s." % (graph_file, pathing_algo))
-    graph_file_full_path = os.path.join(GRAPH_DIR, g_p[0])
+    graph_file_full_path = os.path.join(GRAPH_DIR, graph_file)
 
     mnInterface = MNInterface.MNInterface(opt_net_file = graph_file_full_path,
                                           pathing_algo = pathing_algo,
@@ -117,15 +118,16 @@ def test_unit(graph_file,
     test_results = None
     if TEST_RESSILIENCE == test:
         links_to_fail = test_params['links_to_fail']
-        test_results = mnInterface.test_ressilience(links_to_fail)
+        test_results = mnInterface.test_resillience(links_to_fail)
     elif TEST_PINGALL == test:
         mnInterface.test_ping()
     elif TEST_IPERF_ALL2ALL == test:
         mnInterface.test_iperf()
 
+    mnInterface.end_mn_session()
     return test_results
 
-MAX_LINKS_TO_FAIL = 12
+MAX_LINKS_TO_FAIL = 11
 
 def links_to_fail_from_graph(graph):
     graph_file_full_path = os.path.join(GRAPH_DIR, graph)
@@ -141,6 +143,9 @@ def test_algo_comparison(graph_file, draw_graphs = True):
     total_bw_y = {}
     live_cons_y = {}
     links_to_fail = links_to_fail_from_graph(graph_file)
+    # just specific case i want to checks ...
+    if ((15,16) not in links_to_fail) and ((16,15) not in links_to_fail) and (graph_file == "test8.g"):
+        links_to_fail += [(15,16)]
     for algo in PATHING_ALGOS:
         link_to_perf_results = test_unit(graph_file   = graph_file,
                                         pathing_algo = algo,
@@ -157,7 +162,7 @@ def test_algo_comparison(graph_file, draw_graphs = True):
     if draw_graphs:
         ''' Printing Summary Graphs:'''
 
-        line_shapes = ['bs', 'ro']
+        line_shapes = ['bs', 'ro', 'gv']
 
         # live cons:
         x_axis = range(len(failed_links))
@@ -181,14 +186,14 @@ def test_algo_comparison(graph_file, draw_graphs = True):
             i += 1
         show_graph()
 
-    algo_to_results = {}
+    algo_to_graph_results = {}
     for algo in PATHING_ALGOS:
-        algo_to_results[algo] = {}
+        algo_to_graph_results[algo] = {}
         algo_to_graph_results[algo]['TOTAL_BW']   = sum(total_bw_y[algo])
         algo_to_graph_results[algo]['TOTAL_CONS'] = sum(live_cons_y[algo])
 
-    return algo_to_results
     raw_input("Press Enter to finish...")
+    return algo_to_graph_results
 
 
 def test_full_regression():
@@ -202,7 +207,7 @@ def test_full_regression():
 
     ''' Printing Summary Graphs:'''
 
-    line_shapes = ['bs', 'ro']
+    line_shapes = ['bs', 'ro', 'gv']
     # live cons:
     x_axis = range(len(GRAPHS_WITH_PATHS))
     live_cons_fig = set_figure("Live Connections (Total:%s)" % (total_cons), "graph", "# live connections", x_axis, graph_names, range(total_cons+3))

@@ -50,7 +50,7 @@ export LC_ALL=C
 DEBUG_MOD=0
 NUM_CONNECTIONS=$(( ((  (( ${#HOSTS[@]} * ${#HOSTS[@]} )) - ${#HOSTS[@]} )) / 2  ))
 TIME=$((  NUM_CONNECTIONS * 6 ))
-#WAIT_TO_SERVER=0.7
+WAIT_TIME=20
 BASE_DIR="/home/mininet/optical_network/test_logs/"
 LOGS_DIR=$BASE_DIR"iperf_logs/"
 LOG_FILE=${LOGS_DIR}"iperf"
@@ -101,6 +101,7 @@ function runAll2AllIPerf {
 
     sleep 2
     port=5000
+    process_num=1
     for host1 in ${HOSTS[@]}; do
         for host2 in ${HOSTS[@]}; do
             if (( $host2 >= $host1 )) ; then
@@ -124,7 +125,9 @@ function runAll2AllIPerf {
                 fi
 
             done
-            echo "`print_time`: $client_cmd"
+            #echo "`print_time`: $client_cmd"
+            echo -n "`print_time`:$process_num , "
+            process_num=$(( process_num + 1 ))
             eval $client_cmd
         done
     done
@@ -161,7 +164,7 @@ function collectResults {
 
 function test2 {
     runAll2AllIPerf
-    sleep $TIME
+    sleep $WAIT_TIME
     sudo killall iperf >& /dev/null
     collectResults
     cat $SUMMARY_FILE

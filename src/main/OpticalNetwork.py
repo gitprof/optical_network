@@ -27,7 +27,7 @@ MAX_EDGE_CAPACITY = 10
 
 class OpticalNetwork:
     def __init__(self, master = False):
-        print(type(Global))
+        #print(type(Global))
         self.graph = nx.Graph()
         self.B     = 0 # default
         self.l_net = LogicalNetwork()
@@ -286,7 +286,6 @@ class OpticalNetwork:
         return self.l_net
 
     def clone(self):
-        print('clone:')
         new_copy               = OpticalNetwork()
         new_copy.B             = copy.deepcopy(self.B)
         new_copy.graph         = copy.deepcopy(self.graph)
@@ -294,7 +293,6 @@ class OpticalNetwork:
         new_copy.logical_nodes = copy.deepcopy(self.logical_nodes)
         new_copy.node_positions = copy.deepcopy(self.node_positions)
         new_copy.debug         = self.debug
-        print(type(new_copy))
         return new_copy
 
 
