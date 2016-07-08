@@ -5,6 +5,7 @@ import networkx.drawing as nxd
 import matplotlib.pyplot as plt
 import random
 import copy
+import math
 import imp
 import os
 from collections import Counter
@@ -53,20 +54,27 @@ class OpticalNetwork:
     '''
     def gen_grid_graph(self, M, N, K, seed):
         num_nodes = M*N
-        skip  = seed * 17
         node_list = ['e' for e in range(num_nodes)]
         self.logical_nodes = []
-        logical_pos = skip
-        converging_step = (seed / 3) + 1
-        for r_ix in range(1, K+1):
-            while 'e' != node_list[logical_pos % num_nodes]:
-                logical_pos += converging_step
-                converging_step -= 1 if (converging_step != 1) else 0
-            converging_step = (seed / 3) + 1
-            node_list[logical_pos % num_nodes] = r_ix
+        #skip  = seed * 17
+        #logical_pos = skip
+        #converging_step = (seed / 3) + 1
+        #for r_ix in range(1, K+1):
+        #    while 'e' != node_list[logical_pos % num_nodes]:
+        #        logical_pos += converging_step
+        #        converging_step -= 1 if (converging_step != 1) else 0
+        #    converging_step = (seed / r_ix*r_ix*3) + 1
+        #    node_list[logical_pos % num_nodes] = r_ix
+        #    self.logical_nodes.append(r_ix)
+        #    logical_pos += skip
+        #    skip += seed * r_ix*3 * int(math.ceil(math.log(seed*r_ix)))
+        random.seed(seed)
+        r_indices = random.sample([i for i in range(num_nodes)], K)
+        r_ix = 1
+        for ix in r_indices:
+            node_list[ix] = r_ix
             self.logical_nodes.append(r_ix)
-            logical_pos += skip
-            skip += seed * 3
+            r_ix += 1
         s_ix = K + 1
         for ix in range(len(node_list)):
             if 'e' == node_list[ix]:

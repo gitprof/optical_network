@@ -75,7 +75,10 @@ def show_graph(hold = False):
     plt.grid()
     plt.show()
 
-
+def wait_for_user(location):
+    raw_input("Press any key to finish")
+    raw_input("Press any key to finish")
+    raw_input("Press any key to finish")
 
 def run_mn_examples():
     tests =  EXAMPLE_TESTS
@@ -128,6 +131,7 @@ def test_unit(graph_file,
     return test_results
 
 MAX_LINKS_TO_FAIL = 11
+SEED = 213
 
 def links_to_fail_from_graph(graph):
     graph_file_full_path = os.path.join(GRAPH_DIR, graph)
@@ -135,11 +139,13 @@ def links_to_fail_from_graph(graph):
     opt_net.init_graph_from_file(graph_file_full_path)
     links = opt_net.physical_links().keys()
     num_links = min(MAX_LINKS_TO_FAIL, len(links))
+    random.seed(SEED)
     links_to_fail = random.sample(links, num_links)
     return links_to_fail
 
 
 def test_algo_comparison(graph_file, draw_graphs = True):
+    setLogLevel( 'warning' )
     total_bw_y = {}
     live_cons_y = {}
     links_to_fail = links_to_fail_from_graph(graph_file)
@@ -192,7 +198,7 @@ def test_algo_comparison(graph_file, draw_graphs = True):
         algo_to_graph_results[algo]['TOTAL_BW']   = sum(total_bw_y[algo])
         algo_to_graph_results[algo]['TOTAL_CONS'] = sum(live_cons_y[algo])
 
-    raw_input("Press Enter to finish...")
+    wait_for_user("finished algo comparison")
     return algo_to_graph_results
 
 
@@ -243,11 +249,11 @@ def test_interactive(graph, pathing_algo, ):
 	test_unit(graph_file    = graph,
               pathing_algo  = pathing_algo,
               pathing_algo_params = {},
+              test          = False,
+              test_params   = {},
               controller    = 'RYU',
-              Cli           = True,
-              Test          = False)
-
-
+              StaticArp     = True,
+              Cli           = True)
 
 def run_tests():
     g_p = GRAPHS_WITH_PATHS[0]
@@ -260,7 +266,6 @@ def run_tests():
 
 
 if "__main__" == __name__:
-    setLogLevel( 'info' )
     debug = register_debugger()
     run_tests()
     raw_input("Press Enter to continue...")

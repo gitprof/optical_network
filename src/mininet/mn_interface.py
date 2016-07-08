@@ -50,7 +50,8 @@ Handling Multi Python Processes:
 
 '''
 
-CAPACITY_TO_MBITS = 10
+# a bit more than 10
+CAPACITY_TO_MBITS = 14
 MAX_MBITS = OptNet.MAX_EDGE_CAPACITY * CAPACITY_TO_MBITS
 
 
@@ -174,6 +175,12 @@ class MNInterface(object):
         self.debug.logger("get_running_opt_net: logical_net=%s" % (RUNNING_OPT_NET.get_logical_network().get_paths()))
         return RUNNING_OPT_NET
 
+    def print_logical_paths_to_file(self, pathing_algo, graph_file, logical_paths):
+        graph_name=os.path.split(graph_file)[1]
+        filename="%s_%s" % (pathing_algo, graph_name)
+        full_file_path=os.path.join(TEST_RESULTS_DIR, filename)
+        with open(full_file_path, 'w') as f:
+            f.write(str(logical_paths))
 
     def set_running_opt_net(self, graph_file, pathing_algo, pathing_algo_params):
         global RUNNING_OPT_NET
@@ -200,6 +207,8 @@ class MNInterface(object):
             self.debug.assrt(False, "set_running_opt_net: Unkown pathing algorithm!")
         self.running_opt_net = RUNNING_OPT_NET
         logical_paths = self.running_opt_net.l_net.get_paths()
+        self.debug.logger("logical_paths=%s" % (logical_paths))
+        self.print_logical_paths_to_file(pathing_algo, graph_file, logical_paths)
         #hosts = [host[1:] for host in self._topo.hosts()]
         hosts = self.running_opt_net.get_logical_nodes()
         self.serialize_opt_net(graph_file, logical_paths, hosts)
@@ -338,7 +347,7 @@ class MNInterface(object):
         if (-1 != sw_id1):
             self.net.configLinkStatus("s%d" % sw_id1, "s%d" % sw_id2, 'up')
         time.sleep(1)
-        print("run_link_failure_test: perf_results=%s " % (perf_results))
+        #print("run_link_failure_test: perf_results=%s " % (perf_results))
         return perf_results
 
     def test_resillience(self, links_to_fail = None):
@@ -352,7 +361,7 @@ class MNInterface(object):
             self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
             self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
             #debug_counter += 1
-        print("test_resillience: link_to_perf_res=%s " % (self.link_to_perf_results))
+        #print("test_resillience: link_to_perf_res=%s " % (self.link_to_perf_results))
         return self.link_to_perf_results
 
     def get_last_test_results(self):
@@ -434,7 +443,8 @@ class MNInterface(object):
             #self.test_iperf()
 
         if Dump:
-            self.dump_net_data(_print = True)
+            Demo = 0
+            #self.dump_net_data(_print = True)
 
         if Hold:
             raw_input("Press Enter to finish...")

@@ -38,24 +38,24 @@ class MM_SRLG_solver:
         # print(opt_network.graph.edges())
         half_b = int(math.ceil(float(opt_network.B)/2))
         logical_network = None
-        print('mm_srlg_arb: half_b = '+str(half_b))
+        #print('mm_srlg_arb: half_b = '+str(half_b))
         for C in range(1, half_b+1):
-            print('C: '+str(C))
+            #print('C: '+str(C))
             opt_network.set_strict_capacity(C)
             logical_network = self.ALG(opt_network)
             if len(logical_network.get_paths()) >= opt_network.B:
                 break
         self.debug.assrt(logical_network != None, 'mm_slrg_arb: logical_network is None!')
         logical_network.choose_arbitrary_subset_of_size_b(opt_network.B)
-        self.debug.logger('mm_srlg_arb: produced logical network: ')
-        self.debug.logger(logical_network.get_paths())
+        #self.debug.logger('mm_srlg_arb: produced logical network: ')
+        #self.debug.logger(logical_network.get_paths())
         return logical_network
 
     def produce_cycle_aux(self, tree, cycle, ans, node):
         cycle.append((node, True))
-        print('cycle_debug = ', cycle)
+        #print('cycle_debug = ', cycle)
         next_neighbors = tree.neighbors(node)
-        print('nbrs: ', node, '-', next_neighbors)
+        #print('nbrs: ', node, '-', next_neighbors)
         if ans != node:
             next_neighbors.remove(ans)
         for neighbor in next_neighbors:
@@ -103,7 +103,7 @@ class MM_SRLG_solver:
     '''
     def mm_srlg_cycle(self, opt_network):
         self.debug.assrt(opt_network.B >= len(opt_network.get_logical_nodes()), "mm_srlg_cycle: B must be bigger than number of logical nodes!")
-        self.debug.logger('mm_srlg_cycle: optical_network: %s' % opt_network.physical_links())
+        #self.debug.logger('mm_srlg_cycle: optical_network: %s' % opt_network.physical_links())
         spanning_tree = opt_network.create_spanning_tree()
         #self.debug.logger('mm_srlg_cycle: initial_tree: %s' % spanning_tree.edges())
         # print("mm_srlg_cycle:")
@@ -122,12 +122,12 @@ class MM_SRLG_solver:
         paths = self.produce_subpaths_from_cycle(opt_network, cycle)
         self.debug.assrt((paths != None) and (len(paths) > 0), 'mm_srlg_cycle: bad paths!')
         logical_network = LogicalNetwork().init_from_paths(paths)
-        self.debug.logger('mm_srlg_cycle: produced logical network: %s ' % logical_network.get_paths())
+        #self.debug.logger('mm_srlg_cycle: produced logical network: %s ' % logical_network.get_paths())
         return logical_network
 
 
     def produce_optimized_cycle_aux(self, opt_network, cycle, visited_edges, visited_logicals, insert_logical, ans, node, first_node):
-        self.debug.logger("produce_optimized_cycle_aux: ans=%s. node=%s +" % (ans, node))
+        #self.debug.logger("produce_optimized_cycle_aux: ans=%s. node=%s +" % (ans, node))
         if insert_logical and first_node == node:
             cycle.append((node, insert_logical))
             return (cycle, True)
@@ -155,22 +155,22 @@ class MM_SRLG_solver:
             if node in opt_network.get_logical_nodes():
                 visited_logicals.add(node)
             cycle.append((node, False))
-            self.debug.logger("produce_optimized_cycle_aux: ans=%s. node=%s -" % (ans, node))
+            #self.debug.logger("produce_optimized_cycle_aux: ans=%s. node=%s -" % (ans, node))
         return (cycle, False)
 
 
     def mm_srlg_cycle_optimized(self, opt_network):
         self.debug.assrt(opt_network.B >= len(opt_network.get_logical_nodes()), "mm_srlg_cycle: B must be bigger than number of logical nodes!")
-        self.debug.logger('mm_srlg_cycle_optimized: optical_network: %s' % opt_network.physical_links())
+        #self.debug.logger('mm_srlg_cycle_optimized: optical_network: %s' % opt_network.physical_links())
 
         #self.debug.logger('mm_srlg_cycle: prunned_tree: %s' % spanning_tree.edges())
         first_node = opt_network.get_logical_nodes()[0]
         (cycle, dontcare) = self.produce_optimized_cycle_aux(opt_network, [], set([]), set([first_node]), False, first_node, first_node, first_node)
-        self.debug.logger('mm_srlg_cycle_optimized: cycle: %s' % cycle)
+        #self.debug.logger('mm_srlg_cycle_optimized: cycle: %s' % cycle)
         paths = self.produce_subpaths_from_cycle(opt_network, cycle)
         self.debug.assrt((paths != None) and (len(paths) > 0), 'mm_srlg_cycle: bad paths!')
         logical_network = LogicalNetwork().init_from_paths(paths)
-        self.debug.logger('mm_srlg_cycle: produced logical network: %s ' % logical_network.get_paths())
+        #self.debug.logger('mm_srlg_cycle: produced logical network: %s ' % logical_network.get_paths())
         return logical_network
 
 
@@ -188,9 +188,9 @@ class MM_SRLG_solver:
             new_capacity   = cycle_net.get_plink_capacity(e) - num_lightpaths
             cycle_net.set_edge_capacity(e, new_capacity)
         opt_network.B = opt_network.B - len(opt_network.get_logical_nodes())
-        print('mm_srlg: B left after cycle = '+str(opt_network.B))
+        #print('mm_srlg: B left after cycle = '+str(opt_network.B))
         opt_net_copy = opt_network.clone()
-        print(type(opt_net_copy))
+        #print(type(opt_net_copy))
         EL_arb        = self.mm_srlg_arb(opt_net_copy) if (opt_network.B > 0) else LogicalNetwork()
         EL_arb.merge(EL_cycle)
         opt_network.l_net = EL_arb
@@ -252,12 +252,12 @@ class MM_SRLG_solver:
         edge_to_capacity = copy.deepcopy(physical_links)
         for (i,j) in physical_links.keys():
             edge_to_capacity[(j,i)] = physical_links[(i,j)]
-        self.debug.logger("V_p=%s. E_p=%s. V_l=%s. edge_to_capacity=%s" % (V_p, E_p, V_l, edge_to_capacity))
+        #self.debug.logger("V_p=%s. E_p=%s. V_l=%s. edge_to_capacity=%s" % (V_p, E_p, V_l, edge_to_capacity))
         logical_paths = self.ALG_inner(V_p, E_p, V_l, edge_to_capacity)
         logical_network = LogicalNetwork()
         logical_network.init_from_paths(logical_paths)
-        self.debug.logger('ALG: produced logical network: ')
-        self.debug.logger(logical_network.get_paths())
+        #self.debug.logger('ALG: produced logical network: ')
+        #self.debug.logger(logical_network.get_paths())
         return logical_network
 
 
@@ -342,13 +342,5 @@ class MM_SRLG_solver:
 
         prob.solve()
 
-        #print("Status:", LpStatus[prob.status])
-        # The optimised objective function value is printed to the screen
-        #print("L = ", value(prob.objective))
-        # Each of the variables is printed with it's resolved optimum value
-        #for v in prob.variables():
-        #    print(v.name, "=", v.varValue)
-
-        # print("ALG_inner: end")
         logical_paths = self.process_alg_output(prob, V_l, V_p, E_p)
         return logical_paths

@@ -18,7 +18,7 @@ from Global import *
 
 
 
-SUMMARY_FILE=os.path.join(BASE_DIR, "test_logs", "summary.log")
+SUMMARY_FILE=os.path.join(BASE_DIR, "perftest_logs", "summary.log")
 IPERF_TOOL=os.path.join(TEST_DIR, "run_test.sh")
 PICKLES_JAR=os.path.join(BASE_DIR, "src", "mininet", "pickles")
 PICKLED_HOSTS=os.path.join(PICKLES_JAR, 'hosts')
@@ -79,7 +79,7 @@ def main_performance_tester():
     hosts = []
     with open(PICKLED_HOSTS, 'rb') as f:
         hosts = pk.load(f)
-    #hosts = [1,5,6,7,8]
+    #hosts = [1,2]
     run_test(hosts)
 
 debug = None

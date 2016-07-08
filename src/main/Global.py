@@ -19,6 +19,7 @@ path2 = os.path.split(path1)[0]
 BASE_DIR = path2 # os.path.join(*(path2))
 MAIN_DIR = os.path.join(BASE_DIR, 'src', 'main')
 TEST_DIR = os.path.join(BASE_DIR, 'src', 'test')
+TEST_RESULTS_DIR = os.path.join(BASE_DIR, 'test_results')
 
 GRAPH_DIR      = os.path.join(BASE_DIR,  'graphs')
 GRAPH_SIMPLE   = os.path.join(GRAPH_DIR, 'simple.g')
@@ -45,7 +46,8 @@ GRAPHS_WITH_PATHS = [
                          # ('test8.g', [[1,4,3], [2,5,7,6,4,1], [3,4,5,2]]),
                          # ('test9.g', []),
                          # ('test10.g', []),
-                          ('test11.g', []),
+                         # ('test11.g', []),
+                          ('test12.g', []),
                          # ('star.g', [[1,5,6,3],[3,6,5,2],[2,5,6,4]]),
                          # ('tree.g', [[2,4,1]]),
                          # ('tmp.g', [[1,4,2], [3,4,2], [1,4,3]]),

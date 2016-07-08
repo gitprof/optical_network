@@ -73,7 +73,7 @@ class DP:
         for i in range(0,(len(path))-1):
             u=path[i]
             v=path[i+1]
-            print("***** - %s %s %s" % (u,v,graph[u][v]))
+            #print("***** - %s %s %s" % (u,v,graph[u][v]))
             new_capacity = graph[u][v]['capacity']-1
             deleted_edges.append((u,v,new_capacity))
             graph.remove_edge(u,v)
