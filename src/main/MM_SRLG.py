@@ -114,11 +114,11 @@ class MM_SRLG_solver:
             leaf = leaves.pop()
             neighbors = spanning_tree.neighbors(leaf)
             spanning_tree.remove_node(leaf)
-            leaves = leaves + [node for node in neighbors if ((opt_network.node_degree(node) == 1) and (not opt_network.is_logical_node(node)))]
+            leaves = leaves + [node for node in neighbors if ((spanning_tree.degree(node) == 1) and (not opt_network.is_logical_node(node)))]
 
-        #self.debug.logger('mm_srlg_cycle: prunned_tree: %s' % spanning_tree.edges())
+        self.debug.logger('mm_srlg_cycle: prunned_tree: %s' % spanning_tree.edges())
         cycle = self.produce_cycle_from_tree(opt_network, spanning_tree)
-        #self.debug.logger('mm_srlg_cycle: cycle: %s' % cycle)
+        self.debug.logger('mm_srlg_cycle: cycle: %s' % cycle)
         paths = self.produce_subpaths_from_cycle(opt_network, cycle)
         self.debug.assrt((paths != None) and (len(paths) > 0), 'mm_srlg_cycle: bad paths!')
         logical_network = LogicalNetwork().init_from_paths(paths)

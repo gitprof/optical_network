@@ -204,7 +204,7 @@ class OpticalNetwork:
         logical_graph = self.create_logical_graph()
         self.debug.logger("set_routing_paths: logical_graph=%s" % (logical_graph.edges()))
         routing_paths = nx.all_pairs_dijkstra_path(logical_graph, weight = 'WEIGHT')
-        #self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (routing_paths))
+        self.debug.logger("set_routing_paths: routing_paths from dijkstra: %s" % (routing_paths))
         self.routing_paths_list = []
         logical_pairs = self.get_logical_pairs()
         for r1 in routing_paths.keys():
@@ -217,15 +217,17 @@ class OpticalNetwork:
                     #for ix in range(len(path)):
                     #    path[ix] = path[ix] % GEN
 
-                    # or route just over pairs not in in a logical path. (switch to first if it makes problems)
+                    # or route just over pairs not in a logical path. (switch to first if it makes problems)
                     path = None
                     for _path in self.l_net.get_paths():
-                        if r1 == _path[0] and r2 == _path[1]:
+                        if r1 == _path[0] and r2 == _path[-1]:
                             path = copy.deepcopy(_path)
                     if path == None:
                         path = routing_paths[r1][r2]
                         for ix in range(len(path)):
                             path[ix] = path[ix] % GEN
+
+                    self.debug.logger("path: %s" % path)
 
                     self.routing_paths_list.append(path)
 

@@ -99,6 +99,7 @@ fi
 function runAll2AllIPerf {
     sudo killall $IPERF > /dev/null
     port=5000
+    echo "Executing servers processes..."
     for host1 in ${HOSTS[@]}; do
         for host2 in ${HOSTS[@]}; do
             if (( $host2 >= $host1 )) ; then
@@ -121,6 +122,7 @@ function runAll2AllIPerf {
     sleep 2
     port=5000
     process_num=1
+    echo "Executing clients processes..."
     for host1 in ${HOSTS[@]}; do
         for host2 in ${HOSTS[@]}; do
             if (( $host2 >= $host1 )) ; then
@@ -162,6 +164,7 @@ function runAll2AllIPerf {
 
 
 function collectResults {
+    echo "Collecting results..."
     echo "**** Summary ***" > $SUMMARY_FILE
     for host1 in ${HOSTS[@]}; do
         for host2 in ${HOSTS[@]}; do
@@ -174,7 +177,7 @@ function collectResults {
             #cat $server_log_file | grep SUM | tail -n 5 | head -n 1
             echo -n "${host2}_to_${host1}," >> $SUMMARY_FILE
             is_failed=`cat $client_log_file | egrep "failed|unable"`
-            bw=`cat $client_log_file | grep SUM | tail -n 5 | head -n 1 | tr -s ' ' | cut -d's' -f3- | cut -d'b' -f1 | cut -d' ' -f2`
+            bw=`cat $client_log_file | grep -v terminate | grep SUM | tail -n 5 | head -n 1 | tr -s ' ' | cut -d's' -f3- | cut -d'b' -f1 | cut -d' ' -f2`
             if [[ $is_failed != "" ]] || [[ $bw == ""  ]] ; then
                 echo "fail" >> $SUMMARY_FILE
             else
