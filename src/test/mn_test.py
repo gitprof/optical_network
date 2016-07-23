@@ -261,8 +261,8 @@ def run_tests():
     #run_mn_examples()
     #test_graph_comparison('MM_SRLG')
     #test_graph_comparison('DP')
-    #test_interactive(g_p[0], 'MM_SRLG')
-    test_algo_comparison(g_p[0])
+    test_interactive(g_p[0], 'MM_SRLG_VAR')
+    #test_algo_comparison(g_p[0])
 
 
 if "__main__" == __name__:
