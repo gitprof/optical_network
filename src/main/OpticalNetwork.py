@@ -7,6 +7,8 @@ import random
 import copy
 import math
 import imp
+import sys
+import time
 import os
 from collections import Counter
 
@@ -232,8 +234,22 @@ class OpticalNetwork:
                     self.routing_paths_list.append(path)
 
         self.debug.logger("set_routing_paths: routing_list=%s" % (self.routing_paths_list))
+        self.print_routing_paths(self.routing_paths_list)
         return self.routing_paths_list
 
+    def print_routing_paths (self, routing_paths):
+        #sys.stdout.flush()
+        #self.debug.logger("\n\nOOO --- Routing Paths: ---")
+        t = time.time()
+        print("\n\nOOO --- Routing Paths: --- " )
+
+        for path in routing_paths:
+            demo = 0
+            #self.debug.logger("OOO %s" %  (path))
+            print("OOO %s" %  (path))
+        self.debug.logger("OOO --------------------\n")
+        sys.stdout.flush()
+        sys.stdout.flush()
 
     def reset_after_link_failure(self, link):
         self.debug.logger("reset_after_link_failure: link = (%s,%s)" % (link))
@@ -417,6 +433,16 @@ class LogicalNetwork:
         self.debug = register_debugger()
         self.paths = []
         self.max_SRLG = None
+
+    def print_paths (self):
+        sys.stdout.flush()
+        self.debug.logger("\nOOO --- Logical Paths: ---")
+        for path in self.paths:
+            self.debug.logger("OOO %s" % (path))
+            #for n  in path:
+            #    self.debug.logger("%s->",n)
+            #self.debug.logger("\n")
+        self.debug.logger("OOO ---------------------\n")
 
     def choose_arbitrary_subset_of_size_b(self, B):
         self.debug.assrt(len(self.paths) >= B, "choose_an_arb_subset_of_size_B: not enough paths!")

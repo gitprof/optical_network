@@ -40,14 +40,15 @@ Debug = imp.load_source('Debug', os.path.join(MAIN_DIR, 'utilities', 'Debug.py')
 
 
 PATHING_ALGOS = ['MM_SRLG', 'MM_SRLG_VAR', 'DP']
+ALGO_TO_LINE_SHAPE = {'MM_SRLG': 'bs', 'MM_SRLG_VAR': 'ro', 'DP': 'gv'}
 
 GRAPHS_WITH_PATHS = [
                          #  ('2paths.g', [[1,3,2],[1,4,2]]),
-                          ('test8.g', [[1,4,3], [2,5,7,6,4,1], [3,4,5,2]]),
+                         # ('test8.g', [[1,4,3], [2,5,7,6,4,1], [3,4,5,2]]),
                          # ('test9.g', []),
                          # ('test10.g', []),
                          # ('test11.g', []),
-                         # ('test12.g', []),
+                          ('test12.g', []),
                          # ('test13.g', []),
                          # ('test14.g', []),
                          # ('test15.g', []),

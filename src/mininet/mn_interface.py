@@ -125,6 +125,7 @@ CONTROLLER_LOG_FILE="/tmp/controller.log"
 RYU_DIR="/home/mininet/ryu"
 POX_DIR="/home/mininet/pox"
 
+POLLER_FILE=os.path.join(BASE_DIR, "poller.sh")
 RESTIME = 5
 
 
@@ -276,11 +277,20 @@ class MNInterface(object):
 
         self.controller_logfile = CONTROLLER_LOG_FILE
         dont_show="PacketIn"
-        cmd="sudo xterm -geometry 200x50+10+10  -e \"%s |& egrep -v PacketIn  |& tee  %s |& grep OOO  \"  &" % (start_controller_cmd, self.controller_logfile)
+        #cmd="sudo xterm -geometry 200x50+10+10  -e \"%s |& egrep -v %s  |& tee  %s \"  &" % (start_controller_cmd, dont_show, self.controller_logfile)
+        cmd="sudo xterm -geometry 2x5+10+10  -e \"%s >  %s \"  &" % (start_controller_cmd, self.controller_logfile)
+        #cmd="%s &> %s   &" % (start_controller_cmd, self.controller_logfile)
+        #cmd="sudo xterm -geometry 200x50+10+10  -e \"%s  \"  &" % (start_controller_cmd)
         #cmd="sudo %s  &" % (start_controller_cmd)
-
         self.debug.logger(cmd)
         os.popen(cmd)
+
+        str_to_show = "OOO"
+        poller_params = "%s %s" % (self.controller_logfile, str_to_show)
+        cmd="sudo xterm -hold -geometry 200x50+20+20  -e \"%s  %s\"  &" % (POLLER_FILE, poller_params)
+        self.debug.logger(cmd)
+        os.popen(cmd)
+
         self.controller_ip = CONTROLLER_IP
         time.sleep(RESTIME)
         self.net.addController( 'c0',
