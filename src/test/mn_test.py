@@ -294,7 +294,7 @@ def run_tests(test_mode, graph, algo):
 def arg_parsing():
     parser = argparse.ArgumentParser(description='--- Generic Mininet Test ---\nExecute Mininet, run different perftests and produce results statistics and diagrams.')
     parser.add_argument('--test_mode', nargs=1, choices=['INTERACTIVE', 'GRAPH_CMP', 'ALGO_CMP', 'MN_EXAMPLES'], help='test mode.\n  interactive: run mn and execute mn shell.\n  graph_cmp: run the given algorithm on different graphs.\n  algo_cmp: run different algorithms on the given graph.\n  mn_examples: run some basic mn examples  ')
-    parser.add_argument('--graph',     nargs=1,                                                                  help='graph file. available only for test_mode interactive or algo_comparison. default %s' % (GRAPHS_WITH_PATHS[0][0]))
+    parser.add_argument('--graph',     nargs=1,                                                                  help='graph file name. the file should be located in the \'graphs\' dir, and should be of a familiar format. see OpticalNetwork for details. available only for test_mode interactive or algo_comparison. default %s.' % (GRAPHS_WITH_PATHS[0][0]))
     parser.add_argument('--algo',      nargs=1, choices=['MM_SRLG','MM_SRLG_VAR', 'DP'],                         help='routing algorithm. available only for test_mode interactive or graph_comparison. default MM_SRLG')
     parser.add_argument('--debug_mod', nargs=1, choices=['0', '1', '2', '3', '4'],                               help='debug_mod: 0 - debug. 1 - info. 2 - warnings. 3 - errors. 4 - silent')
     args = parser.parse_args()
