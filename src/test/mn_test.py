@@ -41,9 +41,10 @@ debug = None
 
 DEFAULT_DEBUG_MOD=0
 
+CURR_FIGURE = 1
 
 def set_figure(title, x_title, y_title, x_ticks, x_values, y_ticks):
-    fig = plt.figure()
+    fig = plt.figure(CURR_FIGURE)
     #ax = fig.gca()
     #ax.set_xticks(numpy.arrange(0,10,1))
     #ax.set_yticks(numpy.arrange(0,60, 5))
@@ -65,6 +66,7 @@ def draw_graph(lstx, lsty, line_shape, legend_value):
     #myassert(len(lstx) > 0, "draw_graph: list X empty")
     #myassert(len(lsty) > 0, "draw_graph: list Y empty")
     #myassert(len(lstx) == len(lsty), "draw_graph: lists are not equal")
+    plt.figure(CURR_FIGURE)
     plt.plot(lstx, lsty, line_shape, linewidth=5, label=legend_value)
     #plt.plot(lstx, lsty) #, linestyle=line_shape, linewidth=15, label=legend_value)
     plt.legend(loc=LOC)
@@ -134,7 +136,7 @@ def test_unit(graph_file,
     mnInterface.end_mn_session()
     return test_results
 
-MAX_LINKS_TO_FAIL = 4 # default 11
+MAX_LINKS_TO_FAIL = 1 # default 11
 SEED = 213
 
 def links_to_fail_from_graph(graph):
@@ -149,11 +151,12 @@ def links_to_fail_from_graph(graph):
 
 
 def test_algo_comparison(graph_file, draw_graphs = True):
+    global CURR_FIGURE
     setLogLevel( 'warning' )
     total_bw_y = {}
     live_cons_y = {}
     links_to_fail = links_to_fail_from_graph(graph_file)
-    # just specific case i want to checks ...
+    # just specific case i want to check ...
     if ((15,16) not in links_to_fail) and ((16,15) not in links_to_fail) and (graph_file == "test8.g"):
         links_to_fail += [(15,16)]
     for algo in PATHING_ALGOS:
@@ -163,9 +166,8 @@ def test_algo_comparison(graph_file, draw_graphs = True):
                                         test = TEST_RESSILIENCE,
                                         test_params = {'links_to_fail':links_to_fail},
                                         controller   = 'RYU')
-
         total_cons        = link_to_perf_results['TOTAL_CONS']
-        failed_links      = [link for link in link_to_perf_results.keys() if (link != 'TOTAL_CONS')]
+        failed_links      = [link for link in sorted(link_to_perf_results.keys()) if (link != 'TOTAL_CONS')]
         total_bw_y[algo]  = [link_to_perf_results[link]['TOTAL'][0] for link in failed_links]
         live_cons_y[algo] = [link_to_perf_results[link]['TOTAL'][1] for link in failed_links]
 
@@ -175,46 +177,29 @@ def test_algo_comparison(graph_file, draw_graphs = True):
         graph_name = os.path.split(graph_file)[1]
 
         # live cons:
+        CURR_FIGURE += 1
         live_cons_fig = set_figure("Live Connections (Total:%s)" % (total_cons), "link fail", "# live connections", x_axis, failed_links, range(total_cons+3))
         _text = "Average\n"
         for algo in PATHING_ALGOS:
+            #avg = sum(live_cons_y[algo]) / float(len(live_cons_y[algo]))
             draw_graph(x_axis, live_cons_y[algo], ALGO_TO_LINE_SHAPE[algo], "Graph: %s. Algorithm: %s" % (graph_name, algo))
-            avg = sum(live_cons_y[algo]) / float(len(live_cons_y[algo]))
-            _text+="%s: %s\n" % (algo, str(avg))
-        show_graph(False, _text)
-
-        # only MM_SRLG
-        live_cons_fig = set_figure("Live Connections (Total:%s)" % (total_cons), "link fail", "# live connections", x_axis, failed_links, range(total_cons+3))
-        _text = "Average\n"
-        algo = 'MM_SRLG'
-        draw_graph(x_axis, live_cons_y[algo], ALGO_TO_LINE_SHAPE[algo], "Graph: %s. Algorithm: %s" % (graph_name, algo))
-        avg = sum(live_cons_y[algo]) / float(len(live_cons_y[algo]))
-        _text+="%s: %s\n" % (algo, str(avg))
+            #_text+="%s: %s\n" % (algo, str(avg))
+            _text = None
         show_graph(False, _text)
 
         # total bw:
         max_bw = 0
         for algo in PATHING_ALGOS:
             max_bw = max(int(max(total_bw_y[algo])), max_bw)
+        CURR_FIGURE += 1
         total_bw_fig  = set_figure("Total BWs",                     "link fail", "total BW in Mbit/s",              x_axis, failed_links, range(0,max_bw,20)) # TODO: y axis (BW)
         _text = "Average\n"
         for algo in PATHING_ALGOS:
             draw_graph(x_axis, total_bw_y[algo], ALGO_TO_LINE_SHAPE[algo], "Graph: %s. Algorithm: %s" % (graph_name, algo))
-            avg = sum(total_bw_y[algo]) / float(len(total_bw_y[algo]))
-            _text+="%s: %s\n" % (algo, str(avg))
+            #avg = sum(total_bw_y[algo]) / float(len(total_bw_y[algo]))
+            #_text+="%s: %s\n" % (algo, str(avg))
+            _text = None
         show_graph(False, _text)
-
-        # only MM_SRLG
-        max_bw = 0
-        algo = 'MM_SRLG'
-        max_bw = max(int(max(total_bw_y[algo])), max_bw)
-        total_bw_fig  = set_figure("Total BWs",                     "link fail", "total BW in Mbit/s",              x_axis, failed_links, range(0,max_bw,20)) # TODO: y axis (BW)
-        _text = "Average\n"
-        draw_graph(x_axis, total_bw_y[algo], ALGO_TO_LINE_SHAPE[algo], "Graph: %s. Algorithm: %s" % (graph_name, algo))
-        avg = sum(total_bw_y[algo]) / float(len(total_bw_y[algo]))
-        _text+="%s: %s\n" % (algo, str(avg))
-        show_graph(False, _text)
-
 
     algo_to_graph_results = {}
     for algo in PATHING_ALGOS:
@@ -222,41 +207,45 @@ def test_algo_comparison(graph_file, draw_graphs = True):
         algo_to_graph_results[algo]['TOTAL_BW']   = sum(total_bw_y[algo])
         algo_to_graph_results[algo]['TOTAL_CONS'] = sum(live_cons_y[algo])
 
-    wait_for_user("finished algo comparison")
+    #wait_for_user("finished algo comparison")
     return algo_to_graph_results
 
 
 def test_full_regression():
     graph_names = []
+    algo_to_bw   = {}
+    algo_to_cons = {}
+    for algo in PATHING_ALGOS:
+        algo_to_bw[algo]   = []
+        algo_to_cons[algo] = []
     for g_p in GRAPHS_WITH_PATHS:
         graph_names.append(g_p[0])
-        algo_to_graph_results = test_algo_comparison(g_p[0], False)
+        algo_to_graph_results = test_algo_comparison(g_p[0], True)
         for algo in PATHING_ALGOS:
-            algo_to_bw[algo].append(algo_to_graph_results[algo]['TOTAL_BW'])
+            algo_to_bw  [algo].append(algo_to_graph_results[algo]['TOTAL_BW'])
             algo_to_cons[algo].append(algo_to_graph_results[algo]['TOTAL_CONS'])
 
+    return
     ''' Printing Summary Graphs:'''
 
     # live cons:
     x_axis = range(len(GRAPHS_WITH_PATHS))
+    CURR_FIGURE += 1
     live_cons_fig = set_figure("Live Connections (Total:%s)" % (total_cons), "graph", "# live connections", x_axis, graph_names, range(total_cons+3))
     graph_name = os.path.split(graph_file)[1]
-    i = 0
     for algo in PATHING_ALGOS:
         draw_graph(x_axis, algo_to_cons[algo], ALGO_TO_LINE_SHAPE[algo], "Algorithm: %s" % (algo))
-        i += 1
     show_graph()
 
-    i = 0
     # total bw:
     max_bw = 0
     for algo in PATHING_ALGOS:
         max_bw = max(int(max(total_bw_y[algo])), max_bw)
 
+    CURR_FIGURE += 1
     total_bw_fig  = set_figure("Total BWs",                     "graph", "total BW in Mbit/s",               x_axis, graph_names, range(0,max_bw,100)) # TODO: y axis (BW)
     for algo in PATHING_ALGOS:
         draw_graph(x_axis, algo_to_bw[algo], ALGO_TO_LINE_SHAPE[algo], "Algorithm: %s" % (algo))
-        i += 1
     show_graph()
 
 def test_graph_comparison(pathing_algo = 'MANUAL'):
@@ -285,15 +274,18 @@ def run_tests(test_mode, graph, algo):
         test_graph_comparison(algo)
     elif 'ALGO_CMP'    == test_mode:
         test_algo_comparison(graph)
+    elif 'REGRESSION' == test_mode:
+        test_full_regression()
     elif 'MN_EXAMPLES' == test_mode:
         run_mn_examples()
     else:
         debug.assrt(False, 'unkown test_mode!')
+    wait_for_user("finished algo comparison")
 
 
 def arg_parsing():
     parser = argparse.ArgumentParser(description='--- Generic Mininet Test ---\nExecute Mininet, run different perftests and produce results statistics and diagrams.')
-    parser.add_argument('--test_mode', nargs=1, choices=['INTERACTIVE', 'GRAPH_CMP', 'ALGO_CMP', 'MN_EXAMPLES'], help='test mode.\n  interactive: run mn and execute mn shell.\n  graph_cmp: run the given algorithm on different graphs.\n  algo_cmp: run different algorithms on the given graph.\n  mn_examples: run some basic mn examples  ')
+    parser.add_argument('--test_mode', nargs=1, choices=['INTERACTIVE', 'GRAPH_CMP', 'ALGO_CMP', 'REGRESSION', 'MN_EXAMPLES'], help='test mode.\n  interactive: run mn and execute mn shell.\n  graph_cmp: run the given algorithm on different graphs.\n  algo_cmp: run different algorithms on the given graph.\n  regression: runs all algorithms on each graphs, produce results per graphs, and total summary.\n mn_examples: run some basic mn examples.\n # see src/mainGlobal.py file for list of all pathing algorithms and graphs')
     parser.add_argument('--graph',     nargs=1,                                                                  help='graph file name. the file should be located in the \'graphs\' dir, and should be of a familiar format. see OpticalNetwork for details. available only for test_mode interactive or algo_comparison. default %s.' % (GRAPHS_WITH_PATHS[0][0]))
     parser.add_argument('--algo',      nargs=1, choices=['MM_SRLG','MM_SRLG_VAR', 'DP'],                         help='routing algorithm. available only for test_mode interactive or graph_comparison. default MM_SRLG')
     parser.add_argument('--debug_mod', nargs=1, choices=['0', '1', '2', '3', '4'],                               help='debug_mod: 0 - debug. 1 - info. 2 - warnings. 3 - errors. 4 - silent')

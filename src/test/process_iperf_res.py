@@ -61,7 +61,7 @@ class IperfTester:
                 live_connections += 1
             perf_results[con] = bw
         num_connections = live_connections + fail_connections
-        perf_results['TOTAL'] = (total_bw, live_connections, num_connections)
+        perf_results['TOTAL'] = (total_bw, live_connections)
         self.debug.logger('Live Connections: %s/%s' % (live_connections, num_connections))
         self.debug.logger('Total BW: %s Mbit/s' % (total_bw))
         self.debug.logger('perf_results: ' % (perf_results))
@@ -88,3 +88,4 @@ if "__main__" == __name__:
     debug = register_debugger(master = True)
     main_performance_tester()
     close_debugger()
+

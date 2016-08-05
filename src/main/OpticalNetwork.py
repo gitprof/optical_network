@@ -39,7 +39,7 @@ class OpticalNetwork:
         self.logical_nodes = []
         self.node_positions = None
         self.input_graph = None
-
+        self.figure_num = 300
 
     def destroy(self):
         close_debugger()
@@ -387,15 +387,19 @@ class OpticalNetwork:
     #    return self.l_net.num_lightpaths_via_e(edge)
 
     def draw(self):
+        self.figure_num += 1
+        fig = plt.figure(self.figure_num)
+        ax = fig.add_subplot(111)
+
         g = self.graph
         pos = self.node_positions if self.node_positions != None else nx.spring_layout(self.graph,scale=2)
 
-	node_colors = []
-	for node in g.nodes():
-	    if self.is_logical_node(node):
-	        node_colors.append('g')
-	    else:
-	        node_colors.append('r')
+        node_colors = []
+        for node in g.nodes():
+            if self.is_logical_node(node):
+                node_colors.append('g')
+            else:
+                node_colors.append('r')
 
         nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, node_size=500, alpha=0.8)
         #nx.draw_networkx_nodes(g, pos, nodelist=g.nodes(), node_color=node_colors, node_size=500, alpha=0.8)

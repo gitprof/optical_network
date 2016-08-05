@@ -365,12 +365,24 @@ class MNInterface(object):
         self.link_to_perf_results = {}
         if links_to_fail == None:
             links_to_fail = self.running_opt_net.physical_links().keys()
+        ''' adding (-1,-1) for baseline (no link failure), and (-2,-2) for average
+        '''
         local_links_to_fail = copy.deepcopy(links_to_fail) + [(-1,-1)]
+        avg_bw        = 0
+        avg_live_cons = 0
         for (sw_id1, sw_id2) in local_links_to_fail:
             link = (sw_id1, sw_id2)
             self.link_to_perf_results[link] = self.run_link_failure_test(sw_id1, sw_id2)
-            self.link_to_perf_results['TOTAL_CONS'] = self.link_to_perf_results[link]['TOTAL'][2]
+            avg_bw        += self.link_to_perf_results[link]['TOTAL'][0]
+            avg_live_cons += self.link_to_perf_results[link]['TOTAL'][1]
             #debug_counter += 1
+        avg_bw        = avg_bw        / len(local_links_to_fail)
+        avg_live_cons = avg_live_cons / len(local_links_to_fail)
+        avg_perf_results = {}
+        avg_perf_results['TOTAL'] = (avg_bw, avg_live_cons)
+        self.link_to_perf_results['average'] = avg_perf_results
+        num_hosts = len(self.running_opt_net.get_logical_nodes())
+        self.link_to_perf_results['TOTAL_CONS'] = num_hosts * (num_hosts - 1) / 2
         #print("test_resillience: link_to_perf_res=%s " % (self.link_to_perf_results))
         return self.link_to_perf_results
 

@@ -32,6 +32,7 @@ file: src/test/mn_test.py
 initialize OpticalNetwork and deploy it on Mininet environemnt, using a certain routing algorithm for each test.
 most of the tests are resillience tests for checking and comparing algorithm's performance (to each other, or over different topologies)
 run with --help for options info.
+see src/main/Global.py file for list of all pathing algorithms, graphs and more.
 
 * perftest unit:
 file: src/test/process_iperf_res.p
