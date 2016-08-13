@@ -29,6 +29,8 @@ DEF_INC_FACTOR = 20
 MAX_EDGE_CAPACITY = 10
 
 class OpticalNetwork:
+    figure_num = 300
+
     def __init__(self, master = False):
         #print(type(Global))
         self.graph = nx.Graph()
@@ -39,7 +41,6 @@ class OpticalNetwork:
         self.logical_nodes = []
         self.node_positions = None
         self.input_graph = None
-        self.figure_num = 300
 
     def destroy(self):
         close_debugger()
@@ -84,10 +85,11 @@ class OpticalNetwork:
                 s_ix += 1
         weighted_edges = []
         self.node_positions = {}
+        CAPACITY_UNITS = 2
         for row in range(M):
             for col in range(N):
                 self.node_positions[node_list[row*N+col]] = [row, col]
-                capacity = (((seed * row + col ) * 2 ) % MAX_EDGE_CAPACITY) + 2
+                capacity = (((seed * row + col )  % (MAX_EDGE_CAPACITY / CAPACITY_UNITS)) + 1) * CAPACITY_UNITS
                 if row < M-1:
                     weighted_edge = (node_list[row*N+col], node_list[(row+1)*N+col], {'capacity': capacity})
                     weighted_edges.append(weighted_edge)
@@ -387,8 +389,8 @@ class OpticalNetwork:
     #    return self.l_net.num_lightpaths_via_e(edge)
 
     def draw(self):
-        self.figure_num += 1
-        fig = plt.figure(self.figure_num)
+        OpticalNetwork.figure_num += 1
+        fig = plt.figure(OpticalNetwork.figure_num)
         ax = fig.add_subplot(111)
 
         g = self.graph

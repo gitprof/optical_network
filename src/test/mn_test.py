@@ -136,7 +136,7 @@ def test_unit(graph_file,
     mnInterface.end_mn_session()
     return test_results
 
-MAX_LINKS_TO_FAIL = 1 # default 11
+MAX_LINKS_TO_FAIL = 12 # default 11
 SEED = 213
 
 def links_to_fail_from_graph(graph):
